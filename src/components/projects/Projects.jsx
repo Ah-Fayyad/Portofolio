@@ -34,7 +34,7 @@ function Projects() {
       title: "Around the World",
       description:
         "Search for any country and know its Population, Region , and Capital.",
-      image: "public/page round.png",
+      image: "public/round.png",
       tags: [
         "React",
         "Vite",
@@ -54,8 +54,8 @@ function Projects() {
         "Modern portfolio website showcasing projects and skills with smooth animations.",
       image: "public/portofolio.png",
       tags: ["React", "Vite", "Tailwind CSS"],
-      github: "https://github.com",
-      live: "https://example.com",
+      github: "https://github.com/Ah-Fayyad/Portofolio ",
+      live: "https://portfolio454.netlify.app/",
     },
   ];
 
