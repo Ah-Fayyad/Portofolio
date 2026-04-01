@@ -41,7 +41,7 @@ function Home() {
                 {/* Image */}
                 <img
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 brightness-95 group-hover:brightness-110"
-                  src="public/photo77.jpg"
+                  src="/photo77.jpg"
                   alt="Ahmed Fayyad"
                 />
 
