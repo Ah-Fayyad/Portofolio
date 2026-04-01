@@ -12,17 +12,17 @@ import { SiTailwindcss, SiVite, SiFirebase, SiSupabase } from "react-icons/si";
 
 function Skills() {
   const skillList = [
-    { name: "React", icon: FaReact, color: "#61DAFB" },
-    { name: "JavaScript", icon: FaJsSquare, color: "#F7DF1E" },
     { name: "HTML", icon: FaHtml5, color: "#E34C26" },
     { name: "CSS", icon: FaCss3Alt, color: "#1572B6" },
-    { name: "Tailwind CSS", icon: SiTailwindcss, color: "#06B6D4" },
+    { name: "JavaScript", icon: FaJsSquare, color: "#F7DF1E" },
+    { name: "React", icon: FaReact, color: "#61DAFB" },
     { name: "Vite", icon: SiVite, color: "#646CFF" },
+    { name: "Tailwind CSS", icon: SiTailwindcss, color: "#06B6D4" },
     { name: "Node.js", icon: FaNode, color: "#68A063" },
-    { name: "Git", icon: FaGit, color: "#F1502F" },
-    { name: "Figma", icon: FaFigma, color: "#F24E1E" },
     { name: "Firebase", icon: SiFirebase, color: "#FFCA28" },
     { name: "Supabase", icon: SiSupabase, color: "#3FCF8E" },
+    { name: "Git", icon: FaGit, color: "#F1502F" },
+    { name: "Figma", icon: FaFigma, color: "#F24E1E" },
   ];
 
   return (

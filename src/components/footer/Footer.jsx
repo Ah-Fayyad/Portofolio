@@ -52,7 +52,7 @@ function Footer() {
 
           <div className="md:text-right">
             <h4 className="font-semibold mb-4">Social Media</h4>
-            <div className="flex md:justify-end gap-4 text-gray-400">
+            <div className="flex md:justify-end gap-4  text-gray-400">
               <a
                 href="https://github.com/Ah-Fayyad/"
                 className="hover:text-blue-500 transition-colors"

@@ -56,7 +56,9 @@ function Contact() {
                   rel="noopener noreferrer"
                   className="block group bg-white/5 border border-blue-500/30 rounded-xl p-5 hover:border-blue-500 hover:bg-blue-500/15 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/30"
                 >
-                  <div className="text-3xl text-blue-400 mb-3 group-hover:scale-110 transition-transform duration-300">{icon}</div>
+                  <div className="text-3xl text-blue-400 mb-3 group-hover:scale-105 transition-transform duration-300">
+                    {icon}
+                  </div>
                   <h4 className="text-base font-bold mb-1">{title}</h4>
                   <p className="text-gray-400 text-xs">{info}</p>
                 </a>
@@ -72,7 +74,7 @@ function Contact() {
                 </label>
                 <input
                   type="text"
-                  className="w-full px-4 py-3 bg-linear-to-b from-white/10 to-white/5 border border-blue-500/30 rounded-lg hover:border-blue-500/50 focus:border-blue-500 focus:bg-white/5 focus:outline-none transition-all duration-300 text-base placeholder:text-gray-500"
+                  className="w-full px-4 py-3 bg-linear-to-b from-white/10 to-white/5 border border-blue-500/30 rounded-lg hover:border-blue-500/50 focus:border-blue-500 focus:top-8px valid:top-8px focus:bg-white/5 focus:outline-none transition-all duration-300 text-base placeholder:text-gray-500"
                   placeholder="Your name"
                 />
               </div>
