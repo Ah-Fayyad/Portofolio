@@ -3,7 +3,7 @@ import React from "react";
 function Home() {
   return (
     <section
-      className="home min-h-screen flex items-center justify-center px-4 py-8 overflow-hidden relative"
+      className="home min-h-screen flex items-center justify-center px-4 py-10 overflow-hidden relative"
       id="home"
     >
       {/* Premium Background */}
@@ -41,7 +41,7 @@ function Home() {
                 {/* Image */}
                 <img
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 brightness-95 group-hover:brightness-110"
-                  src="/photo77.jpg"
+                  src="/personal photo.png"
                   alt="Ahmed Fayyad"
                 />
 
@@ -56,7 +56,7 @@ function Home() {
           </div>
 
           {/* Text Section */}
-          <div className="text-section animate-fadeInUp order-1 lg:order-2">
+          <div className="text-section py-10 animate-fadeInUp order-1 lg:order-2">
             <p className="greeting text-blue-400 mb-3 text-lg font-medium animate-fadeInUp-3 tracking-widest uppercase">
               Welcome to my portfolio
             </p>
@@ -84,7 +84,7 @@ function Home() {
               </div>
               <div className="text-center">
                 <div className="text-3xl font-bold bg-linear-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
-                  2+
+                  1+
                 </div>
                 <div className="text-sm text-gray-400 uppercase tracking-wide">
                   Years Experience
@@ -114,10 +114,25 @@ function Home() {
               </a>
               <a
                 href="#contact"
-                className="group px-8 py-4 rounded-full font-bold border-2 border-cyan-400 text-cyan-300 bg-cyan-500/5 hover:bg-cyan-500/15 hover:text-cyan-200 hover:-translate-y-1 transition-all duration-300 hover:border-cyan-300"
+                className="group px-8 py-6 rounded-full font-bold border-2 border-cyan-400 text-cyan-300 bg-cyan-500/5 hover:bg-cyan-500/15 hover:text-cyan-200 hover:-translate-y-1 transition-all duration-300 hover:border-cyan-300"
               >
                 Let's Connect
               </a>
+
+              <div className=" flex  justify-center lg:justify-start flex-wrap animate-fadeInUp-7 gap-2   rounded-2xl p-2 hover:border-blue-500 hover:from-blue-500/20 hover:to-cyan-400/20 transition-all duration-300  items-center">
+                <a
+                  href="https://github.com/Ah-Fayyad/"
+                  className="group px-2 py-4 rounded-full  border-2 border-cyan-400 text-cyan-300 bg-cyan-500/5 hover:bg-cyan-500/15 hover:text-cyan-200 hover:-translate-y-1 transition-all duration-300 hover:border-cyan-300 "
+                >
+                  Github
+                </a>
+                <a
+                  href="https://www.linkedin.com/in/ahmed-fayyad-97a727265?trk=contact-info"
+                  className="group px-2 py-4 rounded-full  border-2 border-cyan-400 text-cyan-300 bg-cyan-500/5 hover:bg-cyan-500/15 hover:text-cyan-200 hover:-translate-y-1 transition-all duration-300 hover:border-cyan-300 "
+                >
+                  LinkedIn
+                </a>
+              </div>
             </div>
           </div>
         </div>

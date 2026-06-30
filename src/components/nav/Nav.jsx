@@ -27,25 +27,16 @@ function Nav() {
   return (
     <header>
       <nav
-        className={`fixed top-1.5 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 w-[90%] max-w-2xl ${
-          scrolled ? "scale-95" : "scale-100"
-        }`}
+        className={`fixed top-1.5 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 w-[90%] max-w-2xl ${scrolled ? "scale-95" : "scale-100"
+          }`}
       >
-        <div className="fixed top-0 left-0 py-5">
-          <a
-            href="#home"
-            className="text-xl font-bold bg-linear-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent "
-          >
-            <span>AF</span>
-          </a>
-        </div>
+
 
         <div
-          className={`flex items-center justify-between px-6 py-3 rounded-full border transition-all duration-300 backdrop-blur-md shadow-lg ${
-            darkMode
-              ? "bg-gray-900/80 border-gray-700/50"
-              : "bg-white/80 border-gray-300/50"
-          }`}
+          className={`flex items-center justify-between px-6 py-3 rounded-full border transition-all duration-300 backdrop-blur-md shadow-lg ${darkMode
+            ? "bg-gray-900/80 border-gray-700/50"
+            : "bg-white/80 border-gray-300/50"
+            }`}
         >
           {/* Brand/Logo */}
           <a
@@ -72,11 +63,10 @@ function Nav() {
           <div className="flex items-center space-x-4">
             <button
               onClick={() => setDarkMode(!darkMode)}
-              className={`p-2 rounded-full border transition-all duration-300 ${
-                darkMode
-                  ? "border-gray-700 bg-gray-800 hover:bg-blue-900 hover:text-blue-400"
-                  : "border-gray-300 bg-white hover:bg-blue-50 hover:text-blue-500"
-              }`}
+              className={`p-2 rounded-full border transition-all duration-300 ${darkMode
+                ? "border-gray-700 bg-gray-800 hover:bg-blue-900 hover:text-blue-400"
+                : "border-gray-300 bg-white hover:bg-blue-50 hover:text-blue-500"
+                }`}
               aria-label="Toggle theme"
             >
               {darkMode ? <Sun size={18} /> : <Moon size={18} />}
@@ -94,15 +84,13 @@ function Nav() {
 
         {/* Mobile menu */}
         <div
-          className={`md:hidden absolute top-full left-1/2 -translate-x-1/2 w-full mt-4 backdrop-blur-xl border rounded-3xl shadow-2xl transition-all duration-300 overflow-hidden ${
-            isOpen
-              ? "opacity-100 visible h-auto p-6"
-              : "opacity-0 invisible h-0"
-          } ${
-            darkMode
+          className={`md:hidden absolute top-full left-1/2 -translate-x-1/2 w-full mt-4 backdrop-blur-xl border rounded-3xl shadow-2xl transition-all duration-300 overflow-hidden ${isOpen
+            ? "opacity-100 visible h-auto p-6"
+            : "opacity-0 invisible h-0"
+            } ${darkMode
               ? "bg-gray-900/95 border-gray-700/50"
               : "bg-white/95 border-gray-300/50"
-          }`}
+            }`}
         >
           <div className="flex flex-col space-y-4 items-center">
             {navLinks.map((link) => (

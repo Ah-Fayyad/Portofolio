@@ -5,6 +5,16 @@ function Projects() {
   const projects = [
     {
       id: 1,
+      title: "Roommates Platform",
+      description:
+        "Roommates Platform is a comprehensive roommate matching application built with a modern tech stack. It facilitates finding compatible roommates, managing rental listings, and streamlining communication between landlords and tenants. The platform uses AI-powered matching algorithms and real-time communication to enhance the user experience.",
+      image: "/Roommates.png",
+      tags: ["React", "React Router" , "Vite", "Tailwind CSS" , "Node.js" , "Express.js" , "TypeScript" , "Prisma" , "PostgreSQL"],
+      github: "https://github.com/Ah-Fayyad/Roommates-Frontend ",
+      live: "https://roommates-frontend.netlify.app/",
+    },
+    {
+      id: 2,
       title: "E-Commerce Platform",
       description:
         "A full-stack E-Commerce platform built with React, Vite, Tailwind CSS, and Material UI, leveraging Supabase for backend services.",
@@ -20,7 +30,7 @@ function Projects() {
       live: "https://project-e-commerce-app.netlify.app/",
     },
     {
-      id: 2,
+      id: 3,
       title: "Repo Finder",
       description:
         "Search for any GitHub repository with an easy-to-use interface.",
@@ -30,7 +40,7 @@ function Projects() {
       live: "https://ah-fayyad.github.io/Repo-Finder/",
     },
     {
-      id: 3,
+      id: 4,
       title: "Around the World",
       description:
         "Search for any country and know its Population, Region , and Capital.",
@@ -47,16 +57,7 @@ function Projects() {
         "https://github.com/Ah-Fayyad/Around-the-world?tab=readme-ov-file",
       live: "https://around-the-world-sepia.vercel.app/",
     },
-    {
-      id: 5,
-      title: "Portfolio Website",
-      description:
-        "Modern portfolio website showcasing projects and skills with smooth animations.",
-      image: "/portofolio.png",
-      tags: ["React", "Vite", "Tailwind CSS"],
-      github: "https://github.com/Ah-Fayyad/Portofolio ",
-      live: "https://portfolio454.netlify.app/",
-    },
+    
   ];
 
   return (

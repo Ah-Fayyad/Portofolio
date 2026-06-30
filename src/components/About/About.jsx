@@ -2,6 +2,7 @@ import { FaAward } from "react-icons/fa";
 import { FiUsers } from "react-icons/fi";
 import { VscFolderLibrary } from "react-icons/vsc";
 import React from "react";
+import { motion } from "framer-motion";
 
 function About() {
   return (
@@ -22,7 +23,7 @@ function About() {
               <div className="bg-linear-to-b from-blue-500/10 to-cyan-400/10 border border-blue-500/20 rounded-2xl p-6 text-center hover:border-blue-500 hover:from-blue-500/20 hover:to-cyan-400/20 transition-all duration-300 hover:-translate-y-2">
                 <FaAward className="text-3xl text-blue-500 mx-auto mb-3" />
                 <h5 className="font-semibold text-lg">Experience</h5>
-                <small className="text-gray-400">2+ Years Working</small>
+                <small className="text-gray-400">1+ Years Working</small>
               </div>
 
               <div className="bg-linear-to-b from-blue-500/10 to-cyan-400/10 border border-blue-500/20 rounded-2xl p-6 text-center hover:border-blue-500 hover:from-blue-500/20 hover:to-cyan-400/20 transition-all duration-300 hover:-translate-y-2">
