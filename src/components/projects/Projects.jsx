@@ -11,7 +11,7 @@ function Projects() {
       image: "/Roommates.png",
       tags: ["React", "React Router" , "Vite", "Tailwind CSS" , "Node.js" , "Express.js" , "TypeScript" , "Prisma" , "PostgreSQL"],
       github: "https://github.com/Ah-Fayyad/Roommates-Frontend ",
-      live: "https://roommates-frontend.netlify.app/",
+      live: "https://roommates-frontend.vercel.app/",
     },
     {
       id: 2,
@@ -27,7 +27,7 @@ function Projects() {
         "Material UI",
       ],
       github: "https://github.com/Ah-Fayyad/E-commerce-App",
-      live: "https://project-e-commerce-app.netlify.app/",
+      live: "https://project-e-commerce-app.vercel.app/",
     },
     {
       id: 3,
