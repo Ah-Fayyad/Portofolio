@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+
+Sitemap: https://portofolio-xi-five-68.vercel.app/sitemap.xml

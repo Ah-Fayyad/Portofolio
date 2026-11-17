@@ -1,111 +1,82 @@
-# 🎨 Ahmed Fayyad - Portfolio Website
+# 🚀 Ahmed Fayyad — Personal Career Platform & Developer Portfolio
 
-A modern, responsive portfolio website built with **React 19**, **Vite**, and **Tailwind CSS v4**, showcasing projects, skills, and services.
+A modern, high-performance personal portfolio and digital credential platform built with **React 19**, **Vite 7**, **Tailwind CSS v4**, and **Supabase**.
 
-## ✨ Features
+**Live Deployment:** [portofolio-xi-five-68.vercel.app](https://portofolio-xi-five-68.vercel.app/)
 
-- 🎯 **Responsive Design** - Optimized for mobile, tablet, and desktop
-- 🌓 **Dark/Light Mode** - Theme toggle with localStorage persistence
-- ⚡ **Ultra-Fast** - Built with Vite for instant HMR and optimized builds
-- 🎭 **Smooth Animations** - Custom fadeInUp, float, and scale animations
-- 💼 **Project Showcase** - Interactive project cards with live demo links
-- 📞 **Contact Section** - Email contact form with multiple communication options
-- 🎨 **Modern UI** - Gradient backgrounds, hover effects, and premium styling
-- 🔍 **SEO Ready** - Semantic HTML and meta tags
+---
 
-## 🛠️ Tech Stack
+## 🌟 Architecture & Simplified Structure
 
-- **Frontend Framework**: React 19.2.3
-- **Build Tool**: Vite 7.3.1
-- **Styling**: Tailwind CSS v4.0.0
-- **Icons**: 
-  - lucide-react (Menu, X, Sun, Moon)
-  - react-icons (Font Awesome, Feather, VS Code, Simple Icons)
-- **State Management**: Custom ThemeContext
-- **Package Manager**: npm
+The application is structured into **two public pages** and **one private admin area**:
 
-## 📦 Installation
+### 1. Portfolio Page (`/`)
+- **Hero & Intro**: Executive introduction, CV download, and status badge.
+- **About Me**: Computer Science background at Arab Open University, Cairo.
+- **Technical Skills**: Verified skills categorized into Frontend, Backend, Databases, Languages, and CS Fundamentals.
+- **Featured Projects**: Real-world case studies including the **Roommates Graduation Project (Top 80 of 1,000+ Projects)** and **Almdrasa E-Commerce Platform**.
+- **Education**: B.Sc. in Computer Science at Arab Open University, Cairo (2022–2026).
+- **Practical Experience**: Capstone engineering leadership and technical milestones.
+- **Contact & Inquiries**: Validated form with direct email dispatch and verified WhatsApp, LinkedIn, and GitHub links.
+- **Recruiter AI Assistant**: Grounded chatbot providing instant answers strictly based on Ahmed's verified background.
 
-1. Clone the repository:
+### 2. Certifications Gallery (`/certifications`)
+- Dedicated digital credential showcase with preserved image aspect ratios.
+- Search, filter by category, and sort by issue date or title.
+- Automatic organization logo recognition (Almdrasa, Google, Meta, IBM, AWS, Microsoft, Coursera, Udemy).
+- High-resolution preview modal with verification links and credential IDs.
+
+### 3. Private Admin Portal (`/admin`)
+- Secure password-protected administrative suite.
+- Real-time CRUD management for certificates without code changes or redeployments.
+- **AI Certificate Scanner**: Upload certificate images or PDFs to auto-extract Title, Issuer, Date, and Skills via AI.
+- Supabase PostgreSQL and Storage bucket synchronization with persistent local fallback.
+
+---
+
+## 🛠️ Technology Stack
+
+- **Frontend Core**: React 19.2.3, Vite 7.3.1
+- **Routing**: React Router DOM v7 (with lazy-loaded code-splitting)
+- **Styling**: Tailwind CSS v4.0.0 (`@tailwindcss/vite`)
+- **Icons**: Lucide React & React Icons
+- **Backend & Storage**: Supabase (PostgreSQL, Supabase Auth, Cloud Storage)
+- **AI Integration**: Google Gemini Vision & Grounded Assistant
+- **Deployment**: Vercel (configured with `vercel.json` SPA rewrites)
+
+---
+
+## 💻 Getting Started Locally
+
+### 1. Clone & Install
 ```bash
 git clone https://github.com/Ah-Fayyad/Portofolio.git
 cd Portofolio
-```
-
-2. Install dependencies:
-```bash
 npm install
 ```
 
-3. Start the development server:
+### 2. Development Server
 ```bash
 npm run dev
 ```
 
-4. Build for production:
+### 3. Run Production Build & Linter
 ```bash
+npm run lint
 npm run build
 ```
 
-## 📁 Project Structure
+---
 
-```
-src/
-├── components/
-│   ├── About/          # About section with stats
-│   ├── contact/        # Contact form & quick contact
-│   ├── footer/         # Footer with links
-│   ├── home/           # Hero section
-│   ├── nav/            # Navigation & theme toggle
-│   ├── projects/       # Portfolio projects
-│   ├── services/       # Services offered
-│   └── skills/         # Technical skills
-├── context/
-│   └── ThemeContext.jsx # Dark/light mode state
-├── hooks/
-│   └── useFetch.js    # Custom fetch hook
-├── i18n/
-│   └── i18n.js        # Internationalization
-├── lib/
-│   └── utils.js       # Utility functions
-├── App.jsx            # Main app component
-├── main.jsx           # Entry point
-└── index.css          # Global styles & animations
-```
+## 🔐 Admin Dashboard Access
 
-## 🎨 Design Highlights
-
-- **Color Palette**: Blue (#3b82f6) to Cyan (#06b6d4) gradients
-- **Dark Mode**: Gray-900 background with cyan accents
-- **Light Mode**: White background with blue accents
-- **Custom Animations**: Staggered fade, floating effects, and smooth transitions
-
-## 📱 Pages/Sections
-
-- **Home**: Hero section with CTA buttons
-- **About**: Professional background with stats cards
-- **Services**: Web development, mobile responsiveness, database design
-- **Skills**: 11 technical skills with icons
-- **Projects**: 4 featured projects with live demos and GitHub links
-- **Contact**: Contact form and quick contact options (Email, Messenger, WhatsApp)
-
-## 🚀 Performance
-
-- Optimized for lighthouse performance
-- Fast build times with Vite
-- Efficient CSS with Tailwind utilities
-- Lazy-loaded optimized images
-
-## 📄 License
-
-This project is open source and available under the MIT License.
-
-## 👨‍💻 Author
-
-**Ahmed Fayyad**
-- GitHub: [@Ah-Fayyad](https://github.com/Ah-Fayyad)
-- Email: your-email@example.com
+Navigate to `/admin` in your browser.
+- **Default Administrative Passcode**: `Ahmed@2026` (or `admin123`)
+- You can connect your live Supabase project by copying `.env.example` to `.env` and adding your credentials.
 
 ---
 
-Made with ❤️ using React & Tailwind CSS
+## 📄 License & Credits
+
+Created by **Ahmed Fayyad** ([@Ah-Fayyad](https://github.com/Ah-Fayyad)).  
+Cairo, Egypt • Contact: [ahfayyad.m@gmail.com](mailto:ahfayyad.m@gmail.com)
