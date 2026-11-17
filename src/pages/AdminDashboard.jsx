@@ -51,6 +51,7 @@ export default function AdminDashboard() {
   const [form, setForm] = useState(emptyForm);
   const [isScanningAI, setIsScanningAI] = useState(false);
   const [aiScanFeedback, setAiScanFeedback] = useState(null);
+  const [aiScanError, setAiScanError] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   // Check existing session
@@ -130,38 +131,124 @@ export default function AdminDashboard() {
     }
   };
 
-  // Simulated AI Certificate Scanner (Gemini Vision Extraction)
-  const handleAICertificateScan = (e) => {
+  const fileToBase64 = (file) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result).split(",")[1]);
+      reader.onerror = () => reject(new Error("Could not read the selected file."));
+      reader.readAsDataURL(file);
+    });
+
+  // Real Gemini Vision certificate extraction
+  const handleAICertificateScan = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     setIsScanningAI(true);
+    setAiScanError(false);
     setAiScanFeedback("Analyzing certificate visual layout and typography with AI...");
 
-    // Simulate Vision OCR & intelligence extraction
-    setTimeout(() => {
-      const fileName = file.name.toLowerCase();
-      let extractedData = {
-        title: "Frontend Engineering Professional Credential",
-        issuer: "Almdrasa",
-        category: "Frontend Development",
-        issueDate: "2024",
-        skillsString: "React.js, TypeScript, Tailwind CSS, REST APIs",
-        credentialId: `ALM-${Math.floor(1000 + Math.random() * 9000)}`,
-        credentialUrl: "https://almdrasa.com/",
-        description: "Professional certificate verifying demonstrated mastery in building responsive React and modern JavaScript web applications."
-      };
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    if (!apiKey || apiKey === "your-gemini-api-key") {
+      setAiScanError(true);
+      setAiScanFeedback("Gemini API key is missing. Add VITE_GEMINI_API_KEY to your environment.");
+      setIsScanningAI(false);
+      e.target.value = "";
+      return;
+    }
 
-      if (fileName.includes("google")) {
-        extractedData.issuer = "Google";
-        extractedData.title = "Google Cloud & Web Fundamentals";
-      } else if (fileName.includes("meta")) {
-        extractedData.issuer = "Meta";
-        extractedData.title = "Meta Frontend Developer Specialization";
-      } else if (fileName.includes("aws")) {
-        extractedData.issuer = "AWS";
-        extractedData.title = "AWS Certified Cloud Practitioner";
+    if (!["image/jpeg", "image/png", "image/webp", "application/pdf"].includes(file.type)) {
+      setAiScanError(true);
+      setAiScanFeedback("Unsupported file type. Upload a JPG, PNG, WebP, or PDF certificate.");
+      setIsScanningAI(false);
+      e.target.value = "";
+      return;
+    }
+
+    if (file.size > 20 * 1024 * 1024) {
+      setAiScanError(true);
+      setAiScanFeedback("The file is larger than 20 MB. Compress or resize it before scanning.");
+      setIsScanningAI(false);
+      e.target.value = "";
+      return;
+    }
+
+    try {
+      const base64 = await fileToBase64(file);
+      const prompt = `You are extracting metadata from a real certificate.
+Read every visible line in the document. Do not infer or invent data.
+Return only valid JSON with exactly these keys:
+title, issuer, issueDate, category, skills, credentialId, credentialUrl, description.
+- title: full certificate or program name exactly as written.
+- issuer: issuing organization name exactly as written.
+- issueDate: issuance date in the best readable form (for example "November 2024").
+- category: exactly one of "Frontend Development", "Full-Stack & Backend", "Computer Science", "Cloud & DevOps", "General".
+- skills: array of 3-10 specific skills actually shown or strongly implied by the certificate title.
+- credentialId: visible credential/certificate ID, or empty string.
+- credentialUrl: visible verification URL, or empty string.
+- description: short neutral summary of what the certificate confirms.
+If a field is unreadable, use an empty string or an empty array.`;
+
+      const response = await fetch(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": apiKey
+          },
+          body: JSON.stringify({
+            contents: [{
+              parts: [
+                { text: prompt },
+                { inlineData: { mimeType: file.type, data: base64 } }
+              ]
+            }],
+            generationConfig: {
+              temperature: 0,
+              responseMimeType: "application/json"
+            }
+          })
+        }
+      );
+
+      if (!response.ok) {
+        const errorBody = await response.text();
+        throw new Error(`Gemini request failed (${response.status}). ${errorBody.slice(0, 300)}`);
       }
+
+      const result = await response.json();
+      const text = result.candidates?.[0]?.content?.parts
+        ?.map((part) => part.text || "")
+        .join("")
+        .trim();
+
+      if (!text) throw new Error("Gemini returned no extracted text.");
+
+      const cleanedText = text
+        .replace(/^```(?:json)?\s*/i, "")
+        .replace(/\s*```$/, "");
+      const extracted = JSON.parse(cleanedText);
+
+      const allowedCategories = [
+        "Frontend Development",
+        "Full-Stack & Backend",
+        "Computer Science",
+        "Cloud & DevOps",
+        "General"
+      ];
+      const extractedData = {
+        title: typeof extracted.title === "string" ? extracted.title : "",
+        issuer: typeof extracted.issuer === "string" ? extracted.issuer : "",
+        issueDate: typeof extracted.issueDate === "string" ? extracted.issueDate : "",
+        category: allowedCategories.includes(extracted.category) ? extracted.category : "General",
+        skillsString: Array.isArray(extracted.skills)
+          ? extracted.skills.filter((skill) => typeof skill === "string").join(", ")
+          : "",
+        credentialId: typeof extracted.credentialId === "string" ? extracted.credentialId : "",
+        credentialUrl: typeof extracted.credentialUrl === "string" ? extracted.credentialUrl : "",
+        description: typeof extracted.description === "string" ? extracted.description : ""
+      };
 
       setForm((prev) => ({
         ...prev,
@@ -169,9 +256,21 @@ export default function AdminDashboard() {
         issuerLogo: matchOrganizationLogo(extractedData.issuer)
       }));
 
+      if (file.type.startsWith("image/")) {
+        CertificateService.uploadCertificateImage(file)
+          .then((imageUrl) => setForm((prev) => ({ ...prev, imageUrl })))
+          .catch((uploadError) => console.warn("Scanned image could not be attached:", uploadError));
+      }
+
+      setAiScanFeedback("Gemini extracted the fields. Review and correct any uncertain values before saving.");
+    } catch (err) {
+      console.error("AI certificate scan failed:", err);
+      setAiScanError(true);
+      setAiScanFeedback(err.message || "The certificate could not be scanned. Please try a clearer image.");
+    } finally {
       setIsScanningAI(false);
-      setAiScanFeedback("AI extracted certificate fields successfully! Please verify below.");
-    }, 1500);
+      e.target.value = "";
+    }
   };
 
   // Save Certificate
@@ -389,8 +488,14 @@ export default function AdminDashboard() {
           </div>
 
           {aiScanFeedback && (
-            <div className="mt-4 p-3 rounded-xl bg-sky-500/15 border border-sky-500/30 text-xs text-sky-300 flex items-center gap-2">
-              <CheckCircle2 size={16} className="shrink-0" />
+            <div className={`mt-4 p-3 rounded-xl border text-xs flex items-center gap-2 ${
+              aiScanError
+                ? "bg-rose-500/15 border-rose-500/30 text-rose-300"
+                : "bg-sky-500/15 border-sky-500/30 text-sky-300"
+            }`}>
+              {aiScanError
+                ? <AlertCircle size={16} className="shrink-0" />
+                : <CheckCircle2 size={16} className="shrink-0" />}
               <span>{aiScanFeedback}</span>
             </div>
           )}
