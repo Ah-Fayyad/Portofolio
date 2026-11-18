@@ -596,10 +596,12 @@ export default function AdminDashboard() {
                     }}
                     className="w-full px-4 py-2.5 rounded-xl border border-border bg-muted/30 text-sm focus:border-sky-500 outline-hidden text-foreground"
                   >
+                    <option value="Software & Web Development">Software &amp; Web Development</option>
+                    <option value="Tech & Computer Science">Tech &amp; Computer Science</option>
+                    <option value="Soft Skills & Leadership">Soft Skills &amp; Leadership</option>
+                    <option value="English & Languages">English &amp; Languages</option>
+                    <option value="Workshops & Hackathons">Workshops &amp; Hackathons</option>
                     <option value="Frontend Development">Frontend Development</option>
-                    <option value="Full-Stack & Backend">Full-Stack &amp; Backend</option>
-                    <option value="Computer Science">Computer Science</option>
-                    <option value="Cloud & DevOps">Cloud &amp; DevOps</option>
                     <option value="General">General</option>
                     <option value="Other">Other (Custom category...)</option>
                   </select>

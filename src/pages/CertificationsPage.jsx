@@ -15,7 +15,14 @@ import {
   ArrowLeft,
   Eye,
   ShieldCheck,
-  Building2
+  Building2,
+  Sparkles,
+  SlidersHorizontal,
+  Code2,
+  Users,
+  Languages,
+  Layers,
+  GraduationCap
 } from "lucide-react";
 
 export default function CertificationsPage() {
@@ -41,18 +48,43 @@ export default function CertificationsPage() {
     loadCerts();
   }, []);
 
-  // Compute available categories
-  const categories = ["All", ...new Set(certificates.map((c) => c.category || "General"))];
+  // Standard predefined categories with icon helpers
+  const categoryIcons = {
+    "All": <Layers size={14} />,
+    "Software & Web Development": <Code2 size={14} />,
+    "Tech & Computer Science": <GraduationCap size={14} />,
+    "Soft Skills & Leadership": <Users size={14} />,
+    "English & Languages": <Languages size={14} />,
+    "Workshops & Hackathons": <Sparkles size={14} />,
+    "Frontend Development": <Code2 size={14} />
+  };
+
+  // Dynamically compute all categories present in the certificates
+  const dynamicCategories = Array.from(
+    new Set([
+      "All",
+      "Software & Web Development",
+      "Tech & Computer Science",
+      "Soft Skills & Leadership",
+      "English & Languages",
+      "Workshops & Hackathons",
+      ...certificates.map((c) => c.category || "General")
+    ])
+  );
 
   // Filtering & Sorting
   const filteredCerts = certificates
     .filter((cert) => {
+      const q = searchTerm.toLowerCase();
       const matchesSearch =
-        cert.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        cert.issuer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (cert.skills && cert.skills.some((s) => s.toLowerCase().includes(searchTerm.toLowerCase())));
+        !q ||
+        cert.title.toLowerCase().includes(q) ||
+        cert.issuer.toLowerCase().includes(q) ||
+        (cert.skills && cert.skills.some((s) => s.toLowerCase().includes(q)));
+
       const matchesCategory =
         selectedCategory === "All" || cert.category === selectedCategory;
+
       return matchesSearch && matchesCategory;
     })
     .sort((a, b) => {
@@ -76,157 +108,207 @@ export default function CertificationsPage() {
     if (org && org.svg) {
       return (
         <div
-          className="w-8 h-8 rounded-lg bg-white/10 p-1 flex items-center justify-center shrink-0"
+          className="w-9 h-9 rounded-xl bg-white/10 p-1.5 flex items-center justify-center shrink-0 border border-white/5"
           dangerouslySetInnerHTML={{ __html: org.svg }}
           title={org.name}
         />
       );
     }
     return (
-      <div className="w-8 h-8 rounded-lg bg-sky-500/10 text-sky-500 flex items-center justify-center shrink-0 font-bold text-xs">
-        <Building2 size={16} />
+      <div className="w-9 h-9 rounded-xl bg-sky-500/10 text-sky-500 flex items-center justify-center shrink-0 font-bold text-xs border border-sky-500/20">
+        <Building2 size={18} />
       </div>
     );
+  };
+
+  // Helper count badges
+  const getCategoryCount = (cat) => {
+    if (cat === "All") return certificates.length;
+    return certificates.filter((c) => c.category === cat).length;
   };
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground transition-colors duration-300">
       <Navbar />
 
-      <main className="flex-1 pt-28 pb-20 px-4">
-        <div className="max-w-6xl mx-auto">
+      <main className="flex-1 pt-28 pb-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
           
-          {/* Breadcrumb & Header with Scroll Reveal */}
-          <div className="mb-10">
-            <Reveal>
-              <Link
-                to="/"
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-sky-500 transition-colors mb-6"
-              >
-                <ArrowLeft size={14} />
-                <span>Back to Main Portfolio</span>
-              </Link>
-            </Reveal>
+          {/* Top Return link */}
+          <Reveal>
+            <Link
+              to="/"
+              className="inline-flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-sky-400 transition-colors mb-6 group"
+            >
+              <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
+              <span>Back to Main Portfolio</span>
+            </Link>
+          </Reveal>
 
-            <Reveal delay={0.08} className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-              <div>
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-sky-500/10 text-sky-500 border border-sky-500/20 mb-3">
-                  <Award size={14} />
-                  <span>Verified Credentials</span>
-                </div>
-                <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-foreground">
-                  Certifications Gallery
-                </h1>
-                <p className="text-muted-foreground text-sm sm:text-base mt-2 max-w-2xl">
-                  Curated digital certificates, professional diplomas, and verified technical credentials with preserved original presentation.
-                </p>
+          {/* Hero Heading Section */}
+          <Reveal delay={0.08} className="mb-10 text-center sm:text-left flex flex-col sm:flex-row items-center sm:items-end justify-between gap-6 pb-6 border-b border-border">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-sky-500/10 text-sky-400 border border-sky-500/20 mb-3">
+                <Award size={14} />
+                <span>Verified Credentials &amp; Achievements</span>
               </div>
+              <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-foreground">
+                Certifications Gallery
+              </h1>
+              <p className="text-muted-foreground text-sm sm:text-base mt-2 max-w-2xl">
+                Official certificates, technical track diplomas, soft skills, and leadership programs completed by Ahmed Fayyad.
+              </p>
+            </div>
 
-              <div className="text-xs text-muted-foreground font-medium bg-card px-4 py-2 rounded-xl border border-border w-fit">
-                Showing <strong className="text-foreground">{filteredCerts.length}</strong> of{" "}
-                <strong className="text-foreground">{certificates.length}</strong> Credentials
+            <div className="flex items-center gap-3">
+              <div className="text-xs font-semibold text-muted-foreground bg-card/80 px-4 py-2.5 rounded-2xl border border-border shadow-xs">
+                Total Credentials: <span className="text-sky-400 font-bold ml-1 text-sm">{certificates.length}</span>
               </div>
-            </Reveal>
-          </div>
-
-          {/* Search, Filter & Sort Controls */}
-          <Reveal delay={0.15} className="p-4 sm:p-5 rounded-2xl border border-border bg-card/80 backdrop-blur-xs mb-10 shadow-xs space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5">
-              
-              {/* Search Bar */}
-              <div className="md:col-span-5 relative">
-                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search by title, issuer, or skill..."
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-muted/40 text-sm focus:border-sky-500 outline-hidden"
-                />
-              </div>
-
-              {/* Category Filter */}
-              <div className="md:col-span-4">
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-muted/40 text-sm focus:border-sky-500 outline-hidden text-foreground"
-                >
-                  {categories.map((cat) => (
-                    <option key={cat} value={cat}>
-                      Category: {cat}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Sort By */}
-              <div className="md:col-span-3">
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-muted/40 text-sm focus:border-sky-500 outline-hidden text-foreground"
-                >
-                  <option value="newest">Sort: Newest First</option>
-                  <option value="oldest">Sort: Oldest First</option>
-                  <option value="title">Sort: Title (A-Z)</option>
-                </select>
-              </div>
-
             </div>
           </Reveal>
 
-          {/* Certificate Grid with Motion Stagger */}
+          {/* Dynamic Interactive Filter Buttons (Color Pills as requested) */}
+          <Reveal delay={0.12} className="mb-8">
+            <div className="flex items-center gap-2 mb-3">
+              <SlidersHorizontal size={14} className="text-sky-400" />
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Filter by Certificate Track
+              </span>
+            </div>
+
+            {/* Scrollable button bar on mobile, wrapped pills on desktop */}
+            <div className="flex items-center gap-2.5 overflow-x-auto pb-2 scrollbar-none flex-nowrap sm:flex-wrap">
+              {dynamicCategories.map((cat) => {
+                const count = getCategoryCount(cat);
+                const isSelected = selectedCategory === cat;
+
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => setSelectedCategory(cat)}
+                    className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 shrink-0 cursor-pointer border ${
+                      isSelected
+                        ? "bg-sky-500 text-white border-sky-400 shadow-md shadow-sky-500/25 scale-[1.02]"
+                        : "bg-card/70 hover:bg-card text-muted-foreground hover:text-foreground border-border hover:border-sky-500/30"
+                    }`}
+                  >
+                    {categoryIcons[cat] || <Award size={14} />}
+                    <span>{cat}</span>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-0.5 ${
+                        isSelected
+                          ? "bg-white/20 text-white"
+                          : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </Reveal>
+
+          {/* Search Bar & Sorting Toolbar */}
+          <Reveal delay={0.16} className="p-3 sm:p-4 rounded-2xl border border-border bg-card/60 backdrop-blur-md mb-10 shadow-xs flex flex-col sm:flex-row gap-3 items-center justify-between">
+            <div className="relative w-full sm:max-w-md">
+              <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search certificate title, issuer, or skills..."
+                className="w-full pl-9 pr-4 py-2 text-xs sm:text-sm rounded-xl border border-border bg-muted/40 text-foreground placeholder:text-muted-foreground/60 focus:border-sky-500 outline-hidden"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+              <span className="text-xs text-muted-foreground hidden sm:inline">Sort:</span>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="px-3.5 py-2 text-xs rounded-xl border border-border bg-muted/40 text-foreground focus:border-sky-500 outline-hidden cursor-pointer"
+              >
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+                <option value="title">Title (A - Z)</option>
+              </select>
+            </div>
+          </Reveal>
+
+          {/* Certificate Grid with Centered Balanced Layout */}
           {loading ? (
-            <div className="text-center py-24 space-y-3">
-              <Award size={36} className="text-sky-500 animate-spin mx-auto" />
-              <p className="text-sm text-muted-foreground">Loading credentials gallery...</p>
+            <div className="text-center py-28 space-y-3">
+              <div className="w-9 h-9 border-2 border-sky-500 border-t-transparent rounded-full animate-spin mx-auto" />
+              <p className="text-xs text-muted-foreground">Loading credentials gallery...</p>
             </div>
           ) : filteredCerts.length === 0 ? (
-            <div className="text-center py-24 border border-dashed border-border rounded-3xl p-8 space-y-3">
-              <Award size={40} className="text-muted-foreground/40 mx-auto" />
-              <h3 className="text-lg font-bold text-foreground">No matching certificates found</h3>
-              <p className="text-xs sm:text-sm text-muted-foreground">
-                Try adjusting your search terms or category filters.
-              </p>
+            <div className="text-center py-24 border border-dashed border-border rounded-3xl p-8 max-w-lg mx-auto space-y-4">
+              <div className="w-14 h-14 rounded-2xl bg-muted/50 text-muted-foreground flex items-center justify-center mx-auto">
+                <Award size={28} />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-foreground">No matching certificates found</h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  We couldn't find any credential matching your current filter.
+                </p>
+              </div>
               <button
                 onClick={() => {
                   setSearchTerm("");
                   setSelectedCategory("All");
                 }}
-                className="text-xs font-semibold text-sky-500 underline cursor-pointer"
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-sky-500/10 text-sky-400 hover:bg-sky-500/20 border border-sky-500/20 transition-all cursor-pointer"
               >
-                Reset filters
+                Reset All Filters
               </button>
             </div>
           ) : (
-            <StaggerGroup className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" stagger={0.1}>
+            <StaggerGroup
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 items-stretch"
+              stagger={0.08}
+            >
               {filteredCerts.map((cert) => (
-                <StaggerItem key={cert.id}>
+                <StaggerItem key={cert.id} className="h-full">
                   <motion.article
-                    whileHover={shouldReduceMotion ? {} : { y: -4 }}
+                    whileHover={shouldReduceMotion ? {} : { y: -5 }}
                     transition={{ duration: 0.25 }}
-                    className="rounded-3xl border border-border bg-card/70 hover:border-sky-500/40 hover:bg-card transition-colors shadow-md hover:shadow-xl flex flex-col overflow-hidden h-full"
+                    className="rounded-3xl border border-border/80 bg-card/80 hover:border-sky-500/50 hover:bg-card hover:shadow-xl hover:shadow-sky-500/5 transition-all flex flex-col overflow-hidden h-full group"
                   >
-                    {/* Image Presentation Frame (Preserves Original Aspect Ratio) */}
+                    {/* Certificate Thumbnail Header (Aspect Ratio Preserved) */}
                     <div
                       onClick={() => setActiveModalCert(cert)}
-                      className="relative aspect-[16/10] bg-slate-950 overflow-hidden cursor-pointer group/frame border-b border-border/80 flex items-center justify-center"
+                      className="relative aspect-16/10 bg-slate-950/80 overflow-hidden cursor-pointer group/frame border-b border-border/80 flex items-center justify-center"
                     >
                       <img
                         src={cert.imageUrl || "/portofolio.png"}
                         alt={cert.title}
-                        className="w-full h-full object-contain p-2 transition-transform duration-500 group-hover/frame:scale-105"
+                        className="w-full h-full object-contain p-2.5 transition-transform duration-500 group-hover/frame:scale-105"
                         loading="lazy"
                       />
-                      <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover/frame:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                        <span className="px-3.5 py-1.5 rounded-full bg-sky-500 text-white font-semibold text-xs flex items-center gap-1.5 shadow-lg">
-                          <Eye size={14} />
-                          <span>Preview Certificate</span>
+                      
+                      <div className="absolute inset-0 bg-slate-950/50 opacity-0 group-hover/frame:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                        <span className="px-4 py-1.5 rounded-full bg-sky-500 text-white font-semibold text-xs flex items-center gap-1.5 shadow-lg shadow-sky-500/40">
+                          <Eye size={13} />
+                          <span>Preview Full Image</span>
                         </span>
                       </div>
 
-                      {/* Featured Ribbon */}
+                      {/* Featured & Category Badges */}
+                      <div className="absolute top-3 left-3 flex items-center gap-1.5">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-900/80 text-sky-400 border border-sky-500/30 backdrop-blur-md">
+                          {cert.category || "General"}
+                        </span>
+                      </div>
+
                       {cert.featured && (
                         <div className="absolute top-3 right-3 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 backdrop-blur-md">
                           Featured
@@ -234,10 +316,10 @@ export default function CertificationsPage() {
                       )}
                     </div>
 
-                    {/* Card Information Body */}
-                    <div className="p-6 flex-1 flex flex-col justify-between">
+                    {/* Certificate Card Content */}
+                    <div className="p-5 sm:p-6 flex-1 flex flex-col justify-between space-y-4">
                       <div>
-                        {/* Organization Header with Logo */}
+                        {/* Organization Header */}
                         <div className="flex items-center gap-3 mb-3">
                           {renderOrgLogo(cert)}
                           <div className="overflow-hidden">
@@ -251,57 +333,69 @@ export default function CertificationsPage() {
                           </div>
                         </div>
 
-                        <h3 className="text-lg font-bold text-foreground mb-2 leading-snug">
+                        {/* Title */}
+                        <h3 className="text-base sm:text-lg font-bold text-foreground group-hover:text-sky-400 transition-colors line-clamp-2 leading-snug">
                           {cert.title}
                         </h3>
 
-                        <p className="text-xs text-muted-foreground line-clamp-3 mb-4 leading-relaxed">
-                          {cert.description}
-                        </p>
-
-                        {/* Skills Tags */}
-                        {cert.skills && cert.skills.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5 mb-5">
-                            {cert.skills.slice(0, 4).map((skill, i) => (
-                              <span
-                                key={i}
-                                className="px-2 py-0.5 rounded-md text-[11px] font-medium border border-border bg-muted/50 text-foreground/80"
-                              >
-                                {skill}
-                              </span>
-                            ))}
-                            {cert.skills.length > 4 && (
-                              <span className="text-[10px] text-muted-foreground self-center">
-                                +{cert.skills.length - 4} more
-                              </span>
-                            )}
-                          </div>
+                        {/* Description */}
+                        {cert.description && (
+                          <p className="text-xs text-muted-foreground line-clamp-2 mt-2 leading-relaxed">
+                            {cert.description}
+                          </p>
                         )}
                       </div>
 
-                      {/* Card Actions */}
-                      <div className="pt-4 border-t border-border flex items-center justify-between gap-2">
+                      {/* Skills Tags */}
+                      {cert.skills && cert.skills.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border/50">
+                          {cert.skills.slice(0, 4).map((skill, i) => (
+                            <span
+                              key={i}
+                              className="px-2 py-0.5 rounded-lg text-[10px] font-medium bg-muted/50 text-muted-foreground border border-border"
+                            >
+                              {skill}
+                            </span>
+                          ))}
+                          {cert.skills.length > 4 && (
+                            <span className="px-1.5 py-0.5 text-[10px] text-muted-foreground font-medium">
+                              +{cert.skills.length - 4} more
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Bottom Action Footer */}
+                      <div className="pt-3 border-t border-border flex items-center justify-between text-xs">
                         <button
                           onClick={() => setActiveModalCert(cert)}
-                          className="text-xs font-semibold text-sky-500 hover:text-sky-400 transition-colors flex items-center gap-1 cursor-pointer"
+                          className="font-semibold text-sky-400 hover:text-sky-300 flex items-center gap-1 cursor-pointer"
                         >
                           <Eye size={13} />
                           <span>View Details</span>
                         </button>
 
-                        {cert.credentialUrl && (
+                        {cert.credentialUrl ? (
                           <a
                             href={cert.credentialUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                            className="text-muted-foreground hover:text-foreground flex items-center gap-1 font-medium"
                           >
                             <span>Verify</span>
                             <ExternalLink size={12} />
                           </a>
+                        ) : cert.credentialId ? (
+                          <span className="text-[11px] text-muted-foreground font-mono">
+                            ID: {cert.credentialId}
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-emerald-400 flex items-center gap-1">
+                            <ShieldCheck size={12} />
+                            <span>Verified</span>
+                          </span>
                         )}
                       </div>
-
                     </div>
                   </motion.article>
                 </StaggerItem>
@@ -312,88 +406,88 @@ export default function CertificationsPage() {
         </div>
       </main>
 
-      {/* High-Resolution Modal / Lightbox with AnimatePresence */}
+      {/* Lightbox Preview Modal */}
       <AnimatePresence>
         {activeModalCert && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            role="dialog"
-            aria-modal="true"
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md"
             onClick={() => setActiveModalCert(null)}
+            className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md p-4 sm:p-6 flex items-center justify-center"
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.94, y: 16 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.94, y: 16 }}
-              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-              className="relative w-full max-w-4xl rounded-3xl border border-sky-500/30 bg-card p-6 sm:p-8 shadow-2xl overflow-y-auto max-h-[90vh]"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
+              className="bg-card border border-border rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl p-6 sm:p-8 space-y-6 relative"
             >
-              {/* Modal Close Button */}
               <button
                 onClick={() => setActiveModalCert(null)}
-                className="absolute top-5 right-5 p-2 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-all cursor-pointer"
-                aria-label="Close modal"
+                className="absolute top-5 right-5 p-2 rounded-full border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
               >
                 <X size={18} />
               </button>
 
-              {/* Organization & Title */}
-              <div className="flex items-center gap-3.5 mb-6 pr-10">
+              <div className="flex items-center gap-3">
                 {renderOrgLogo(activeModalCert)}
                 <div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-sky-500">
-                    {activeModalCert.issuer} • {activeModalCert.category || "Certificate"}
+                  <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
+                    {activeModalCert.issuer}
+                  </h4>
+                  <span className="text-xs text-muted-foreground">
+                    Issued: {activeModalCert.issueDate || "Verified"}
                   </span>
-                  <h2 className="text-2xl sm:text-3xl font-extrabold text-foreground">
-                    {activeModalCert.title}
-                  </h2>
                 </div>
               </div>
 
-              {/* Preserved High-Resolution Image Presentation */}
-              <div className="rounded-2xl overflow-hidden border border-border bg-slate-950 p-2 sm:p-4 mb-6 flex items-center justify-center shadow-inner">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-black text-foreground">
+                  {activeModalCert.title}
+                </h2>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                    {activeModalCert.category || "General"}
+                  </span>
+                  {activeModalCert.featured && (
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                      Featured Credential
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Certificate Image Frame */}
+              <div className="rounded-2xl overflow-hidden bg-slate-950 border border-border p-2">
                 <img
                   src={activeModalCert.imageUrl || "/portofolio.png"}
                   alt={activeModalCert.title}
-                  className="max-h-[460px] w-auto max-w-full object-contain rounded-lg"
+                  className="w-full max-h-[450px] object-contain rounded-xl mx-auto"
                 />
               </div>
 
-              {/* Detailed Metadata Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-5 rounded-2xl bg-muted/30 border border-border/80 mb-6 text-xs sm:text-sm">
+              {activeModalCert.description && (
                 <div>
-                  <span className="text-muted-foreground block mb-0.5">Issue Date:</span>
-                  <strong className="text-foreground">{activeModalCert.issueDate || "N/A"}</strong>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
+                    Curriculum &amp; Highlights
+                  </h4>
+                  <p className="text-xs sm:text-sm text-foreground leading-relaxed">
+                    {activeModalCert.description}
+                  </p>
                 </div>
-                {activeModalCert.credentialId && (
-                  <div>
-                    <span className="text-muted-foreground block mb-0.5">Credential ID:</span>
-                    <code className="px-2 py-0.5 rounded bg-muted font-mono text-foreground">
-                      {activeModalCert.credentialId}
-                    </code>
-                  </div>
-                )}
-              </div>
+              )}
 
-              <p className="text-sm text-muted-foreground leading-relaxed mb-6">
-                {activeModalCert.description}
-              </p>
-
-              {/* Skills */}
               {activeModalCert.skills && activeModalCert.skills.length > 0 && (
-                <div className="mb-6">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-foreground mb-2">
-                    Demonstrated Skills
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
+                    Verified Competencies
                   </h4>
                   <div className="flex flex-wrap gap-2">
                     {activeModalCert.skills.map((s, idx) => (
                       <span
                         key={idx}
-                        className="px-3 py-1 rounded-full text-xs font-semibold border border-sky-500/30 bg-sky-500/10 text-sky-400"
+                        className="px-3 py-1 rounded-xl text-xs font-medium bg-muted text-foreground border border-border"
                       >
                         {s}
                       </span>
@@ -402,27 +496,34 @@ export default function CertificationsPage() {
                 </div>
               )}
 
-              {/* Action Buttons */}
-              <div className="flex flex-wrap items-center justify-end gap-3 pt-4 border-t border-border">
-                {activeModalCert.credentialUrl && (
-                  <a
-                    href={activeModalCert.credentialUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-5 py-2.5 rounded-full font-semibold text-xs sm:text-sm bg-linear-to-r from-sky-500 to-indigo-600 text-white flex items-center gap-1.5 shadow-md"
-                  >
-                    <ShieldCheck size={16} />
-                    <span>Verify Credential on Issuer Website</span>
-                  </a>
+              {/* Modal Action Footer */}
+              <div className="pt-4 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-3">
+                {activeModalCert.credentialId && (
+                  <span className="text-xs text-muted-foreground font-mono">
+                    Credential ID: <strong className="text-foreground">{activeModalCert.credentialId}</strong>
+                  </span>
                 )}
-                <button
-                  onClick={() => setActiveModalCert(null)}
-                  className="px-5 py-2.5 rounded-full font-semibold text-xs sm:text-sm border border-border bg-card hover:bg-muted text-foreground transition-all cursor-pointer"
-                >
-                  Close Preview
-                </button>
-              </div>
 
+                <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                  {activeModalCert.credentialUrl && (
+                    <a
+                      href={activeModalCert.credentialUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-5 py-2.5 rounded-full text-xs font-semibold bg-sky-500 hover:bg-sky-600 text-white flex items-center gap-1.5 shadow-md transition-all"
+                    >
+                      <span>Verify on Official Portal</span>
+                      <ExternalLink size={13} />
+                    </a>
+                  )}
+                  <button
+                    onClick={() => setActiveModalCert(null)}
+                    className="px-5 py-2.5 rounded-full text-xs font-semibold border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition-all"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
             </motion.div>
           </motion.div>
         )}
