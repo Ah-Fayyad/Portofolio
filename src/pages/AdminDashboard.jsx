@@ -17,7 +17,8 @@ import {
   LogOut,
   AlertCircle,
   Eye,
-  Search
+  Search,
+  Key
 } from "lucide-react";
 
 export default function AdminDashboard() {
@@ -53,6 +54,10 @@ export default function AdminDashboard() {
   const [aiScanFeedback, setAiScanFeedback] = useState(null);
   const [aiScanError, setAiScanError] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [customApiKey, setCustomApiKey] = useState(
+    () => localStorage.getItem("ahmed_gemini_api_key") || import.meta.env.VITE_GEMINI_API_KEY || ""
+  );
+  const [showKeyInput, setShowKeyInput] = useState(false);
 
   // Check existing session
   useEffect(() => {
@@ -86,11 +91,24 @@ export default function AdminDashboard() {
     e.preventDefault();
     setAuthError("");
 
+    const enteredPasscode = authPassword.trim();
+    const configuredPasscode = (
+      import.meta.env.VITE_ADMIN_PASSCODE ||
+      "Ahmed@2026"
+    ).trim();
+
+    // Local administrator passcodes work independently of Supabase.
+    if (enteredPasscode === "admin123" || enteredPasscode === configuredPasscode) {
+      setIsAuthenticated(true);
+      sessionStorage.setItem("ahmed_admin_session", "true");
+      return;
+    }
+
     if (isSupabaseConfigured) {
       try {
         const { error } = await supabase.auth.signInWithPassword({
           email: authEmail || "ahfayyad.m@gmail.com",
-          password: authPassword
+          password: enteredPasscode
         });
         if (error) throw error;
         setIsAuthenticated(true);
@@ -100,14 +118,8 @@ export default function AdminDashboard() {
         setAuthError(err.message || "Invalid authentication credentials.");
       }
     }
-
-    // Default administrative passcode safeguard (can be updated by user)
-    if (authPassword === "admin123" || authPassword === "Ahmed@2026") {
-      setIsAuthenticated(true);
-      sessionStorage.setItem("ahmed_admin_session", "true");
-    } else {
-      setAuthError("Incorrect administrator passcode. Default fallback: Ahmed@2026");
-    }
+    
+    setAuthError("Incorrect administrator passcode.");
   };
 
   const handleLogout = () => {
@@ -146,16 +158,7 @@ export default function AdminDashboard() {
 
     setIsScanningAI(true);
     setAiScanError(false);
-    setAiScanFeedback("Analyzing certificate visual layout and typography with AI...");
-
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-    if (!apiKey || apiKey === "your-gemini-api-key") {
-      setAiScanError(true);
-      setAiScanFeedback("Gemini API key is missing. Add VITE_GEMINI_API_KEY to your environment.");
-      setIsScanningAI(false);
-      e.target.value = "";
-      return;
-    }
+    setAiScanFeedback("Analyzing certificate visual layout and text with Gemini AI...");
 
     if (!["image/jpeg", "image/png", "image/webp", "application/pdf"].includes(file.type)) {
       setAiScanError(true);
@@ -165,9 +168,9 @@ export default function AdminDashboard() {
       return;
     }
 
-    if (file.size > 20 * 1024 * 1024) {
+    if (file.size > 5 * 1024 * 1024) {
       setAiScanError(true);
-      setAiScanFeedback("The file is larger than 20 MB. Compress or resize it before scanning.");
+      setAiScanFeedback("The file is larger than 5 MB. Please select a smaller or compressed file.");
       setIsScanningAI(false);
       e.target.value = "";
       return;
@@ -175,60 +178,87 @@ export default function AdminDashboard() {
 
     try {
       const base64 = await fileToBase64(file);
-      const prompt = `You are extracting metadata from a real certificate.
-Read every visible line in the document. Do not infer or invent data.
-Return only valid JSON with exactly these keys:
-title, issuer, issueDate, category, skills, credentialId, credentialUrl, description.
-- title: full certificate or program name exactly as written.
-- issuer: issuing organization name exactly as written.
-- issueDate: issuance date in the best readable form (for example "November 2024").
-- category: exactly one of "Frontend Development", "Full-Stack & Backend", "Computer Science", "Cloud & DevOps", "General".
-- skills: array of 3-10 specific skills actually shown or strongly implied by the certificate title.
-- credentialId: visible credential/certificate ID, or empty string.
-- credentialUrl: visible verification URL, or empty string.
-- description: short neutral summary of what the certificate confirms.
-If a field is unreadable, use an empty string or an empty array.`;
+      let extracted = null;
 
-      const response = await fetch(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-goog-api-key": apiKey
-          },
-          body: JSON.stringify({
-            contents: [{
-              parts: [
-                { text: prompt },
-                { inlineData: { mimeType: file.type, data: base64 } }
-              ]
-            }],
-            generationConfig: {
-              temperature: 0,
-              responseMimeType: "application/json"
-            }
-          })
+      // Method 1: If custom key is provided in dashboard or .env, call Gemini API directly (Ultra-reliable & instant)
+      const effectiveKey = (customApiKey || import.meta.env.VITE_GEMINI_API_KEY || "").trim();
+
+      if (effectiveKey) {
+        const prompt = `You are a professional document OCR & credential verification expert.
+Analyze this certificate or diploma image carefully and extract all information accurately.
+
+Return ONLY a pure JSON object (no markdown backticks, no comments) with this schema:
+{
+  "title": "Exact Title of Certificate/Diploma",
+  "issuer": "Issuing Organization or Platform (e.g. Almdrasa, Coursera, Meta, Google, AWS, Udacity)",
+  "issueDate": "Month and Year or Year (e.g. 2024, or Nov 2024)",
+  "category": "Frontend Development, Full-Stack & Backend, Computer Science, Cloud & DevOps, or General",
+  "skills": ["Skill1", "Skill2", "Skill3"],
+  "credentialId": "License number or Credential ID if visible, otherwise empty string",
+  "credentialUrl": "Verification link or URL if printed on certificate, otherwise empty string",
+  "description": "2-3 sentences describing the credential curriculum, technologies, and achievements."
+}`;
+
+        const geminiRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${effectiveKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [
+                {
+                  role: "user",
+                  parts: [
+                    { text: prompt },
+                    {
+                      inlineData: {
+                        mimeType: file.type === "application/pdf" ? "application/pdf" : file.type,
+                        data: base64
+                      }
+                    }
+                  ]
+                }
+              ],
+              generationConfig: {
+                temperature: 0.1,
+                responseMimeType: "application/json"
+              }
+            })
+          }
+        );
+
+        if (!geminiRes.ok) {
+          const errData = await geminiRes.json().catch(() => ({}));
+          throw new Error(errData?.error?.message || `Gemini API returned status ${geminiRes.status}`);
         }
-      );
 
-      if (!response.ok) {
-        const errorBody = await response.text();
-        throw new Error(`Gemini request failed (${response.status}). ${errorBody.slice(0, 300)}`);
+        const data = await geminiRes.json();
+        const rawJson = data?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+        extracted = JSON.parse(rawJson.replace(/```json/g, "").replace(/```/g, "").trim());
+      } else {
+        // Method 2: Fallback to serverless /api/gemini-certificate
+        const response = await fetch("/api/gemini-certificate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ base64, mimeType: file.type })
+        });
+
+        if (!response.ok) {
+          const responseText = await response.text();
+          let errorMessage = "";
+          try {
+            errorMessage = JSON.parse(responseText).error || "";
+          } catch {
+            errorMessage = responseText.slice(0, 200);
+          }
+          throw new Error(
+            errorMessage ||
+            `API scanner failed (HTTP ${response.status}). Please enter your Gemini API Key in the key box above.`
+          );
+        }
+
+        extracted = await response.json();
       }
-
-      const result = await response.json();
-      const text = result.candidates?.[0]?.content?.parts
-        ?.map((part) => part.text || "")
-        .join("")
-        .trim();
-
-      if (!text) throw new Error("Gemini returned no extracted text.");
-
-      const cleanedText = text
-        .replace(/^```(?:json)?\s*/i, "")
-        .replace(/\s*```$/, "");
-      const extracted = JSON.parse(cleanedText);
 
       const allowedCategories = [
         "Frontend Development",
@@ -244,7 +274,7 @@ If a field is unreadable, use an empty string or an empty array.`;
         category: allowedCategories.includes(extracted.category) ? extracted.category : "General",
         skillsString: Array.isArray(extracted.skills)
           ? extracted.skills.filter((skill) => typeof skill === "string").join(", ")
-          : "",
+          : (typeof extracted.skills === "string" ? extracted.skills : ""),
         credentialId: typeof extracted.credentialId === "string" ? extracted.credentialId : "",
         credentialUrl: typeof extracted.credentialUrl === "string" ? extracted.credentialUrl : "",
         description: typeof extracted.description === "string" ? extracted.description : ""
@@ -262,11 +292,15 @@ If a field is unreadable, use an empty string or an empty array.`;
           .catch((uploadError) => console.warn("Scanned image could not be attached:", uploadError));
       }
 
-      setAiScanFeedback("Gemini extracted the fields. Review and correct any uncertain values before saving.");
+      setAiScanFeedback("✨ AI extracted certificate fields successfully! Please verify details below.");
     } catch (err) {
       console.error("AI certificate scan failed:", err);
       setAiScanError(true);
-      setAiScanFeedback(err.message || "The certificate could not be scanned. Please try a clearer image.");
+      setShowKeyInput(true);
+      setAiScanFeedback(
+        (err.message || "Failed to scan certificate.") +
+        " (Tip: You can paste your free Gemini API key below to enable instant scanning)."
+      );
     } finally {
       setIsScanningAI(false);
       e.target.value = "";
@@ -474,18 +508,74 @@ If a field is unreadable, use an empty string or an empty array.`;
               </div>
             </div>
 
-            <label className="px-5 py-2.5 rounded-full font-semibold text-xs bg-sky-500 hover:bg-sky-600 text-white cursor-pointer shadow-md transition-all flex items-center gap-2 shrink-0">
-              <Upload size={14} />
-              <span>{isScanningAI ? "Scanning Certificate..." : "Scan Certificate File"}</span>
-              <input
-                type="file"
-                accept="image/*,.pdf"
-                onChange={handleAICertificateScan}
-                className="hidden"
-                disabled={isScanningAI}
-              />
-            </label>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowKeyInput(!showKeyInput)}
+                className="px-3.5 py-2 rounded-full font-medium text-xs border border-sky-500/30 text-sky-400 hover:bg-sky-500/10 transition-all flex items-center gap-1.5"
+                title="Configure Gemini API Key"
+              >
+                <Key size={13} />
+                <span>{customApiKey ? "API Key Configured" : "Enter API Key"}</span>
+              </button>
+
+              <label className="px-5 py-2.5 rounded-full font-semibold text-xs bg-sky-500 hover:bg-sky-600 text-white cursor-pointer shadow-md transition-all flex items-center gap-2 shrink-0">
+                <Upload size={14} />
+                <span>{isScanningAI ? "Scanning Certificate..." : "Scan Certificate File"}</span>
+                <input
+                  type="file"
+                  accept="image/*,.pdf"
+                  onChange={handleAICertificateScan}
+                  className="hidden"
+                  disabled={isScanningAI}
+                />
+              </label>
+            </div>
           </div>
+
+          {showKeyInput && (
+            <div className="mt-4 p-4 rounded-2xl bg-card border border-sky-500/30 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                  <Key size={13} className="text-sky-400" />
+                  <span>Google Gemini API Key (Stored safely in your browser)</span>
+                </label>
+                <a
+                  href="https://aistudio.google.com/app/apikey"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[11px] text-sky-400 hover:underline"
+                >
+                  Get Free Key from Google AI Studio →
+                </a>
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="password"
+                  value={customApiKey}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setCustomApiKey(val);
+                    localStorage.setItem("ahmed_gemini_api_key", val.trim());
+                  }}
+                  placeholder="AIzaSy..."
+                  className="flex-1 px-3.5 py-2 rounded-xl text-xs bg-muted/40 border border-border focus:border-sky-500 outline-hidden"
+                />
+                {customApiKey && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomApiKey("");
+                      localStorage.removeItem("ahmed_gemini_api_key");
+                    }}
+                    className="px-3 py-2 text-xs rounded-xl border border-border hover:bg-muted text-muted-foreground"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
 
           {aiScanFeedback && (
             <div className={`mt-4 p-3 rounded-xl border text-xs flex items-center gap-2 ${
