@@ -13,6 +13,7 @@ const KNOWN_ORGANIZATIONS = [
   { name: "LinkedIn Learning", patterns: [/linkedin\s+learning/i] },
   { name: "Information Technology Institute (ITI)", patterns: [/\biti\b/i, /information\s+technology\s+institute/i] },
   { name: "Arab Open University", patterns: [/arab\s+open\s+university/i, /\baou\b/i] },
+  { name: "Edraak", patterns: [/edraak/i, /إدراك/i] },
   { name: "Route Academy", patterns: [/route/i] },
   { name: "Mahara-Tech", patterns: [/mahara/i] }
 ];
@@ -73,18 +74,28 @@ export function extractCertificateMetadataFromFilenameAndText(filename = "", ocr
   }
 
   // 3. Detect Category
-  let category = "Frontend Development";
-  if (/full[- ]?stack|backend|node|express|api|sql|database|django/i.test(combined)) {
-    category = "Full-Stack & Backend";
-  } else if (/cloud|devops|aws|docker|kubernetes|azure/i.test(combined)) {
-    category = "Cloud & DevOps";
-  } else if (/computer\s+science|algorithm|data\s+structure|operating\s+system|cs\b/i.test(combined)) {
-    category = "Computer Science";
+  let category = "Software & Web Development";
+  if (/emotional\s+intelligence|leadership|communication|soft\s*skill|presentation|teamwork|management|negotiation/i.test(combined)) {
+    category = "Soft Skills & Leadership";
+  } else if (/english|language|toefl|ielts|grammar|speaking/i.test(combined)) {
+    category = "English & Languages";
+  } else if (/workshop|hackathon|bootcamp|conference|seminar|meetup/i.test(combined)) {
+    category = "Workshops & Hackathons";
+  } else if (/computer\s+science|algorithm|data\s+structure|operating\s+system|cs\b|architecture/i.test(combined)) {
+    category = "Tech & Computer Science";
+  } else if (/react|frontend|javascript|typescript|web\s+development|html|css|full[- ]?stack/i.test(combined)) {
+    category = "Software & Web Development";
   }
 
   // 4. Detect Skills
   const detectedSkills = [];
-  for (const skill of SKILL_KEYWORDS) {
+  const SOFT_SKILLS = [
+    "Emotional Intelligence", "Communication", "Leadership", "Teamwork",
+    "Critical Thinking", "Problem Solving", "Time Management", "Adaptability",
+    "Active Listening", "Negotiation", "Public Speaking", "Work Ethic"
+  ];
+
+  for (const skill of [...SKILL_KEYWORDS, ...SOFT_SKILLS]) {
     const reg = new RegExp(`\\b${skill.replace(".", "\\.")}\\b`, "i");
     if (reg.test(combined)) {
       if (!detectedSkills.includes(skill)) {

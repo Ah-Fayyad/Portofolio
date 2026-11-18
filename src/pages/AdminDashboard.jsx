@@ -8,6 +8,7 @@ import {
 } from "../lib/supabaseClient";
 import { extractCertificateMetadataFromFilenameAndText } from "../lib/certificateExtractor";
 import { performClientOCR } from "../lib/ocrService";
+import { processPdfCertificate } from "../lib/pdfService";
 import {
   Award,
   Trash2,
@@ -170,10 +171,20 @@ export default function AdminDashboard() {
 
     try {
       let extractedData = null;
-
-      // 1. Try Real-Time Client OCR to extract actual text from image pixels
       let ocrText = "";
-      if (file.type.startsWith("image/")) {
+      let renderedPdfImage = null;
+
+      // 1. If it's a PDF, extract digital text AND generate a crisp preview image
+      if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
+        try {
+          const pdfResult = await processPdfCertificate(file, (msg) => setAiScanFeedback(msg));
+          ocrText = pdfResult.text || "";
+          renderedPdfImage = pdfResult.imageUrl || null;
+        } catch (pdfErr) {
+          console.warn("PDF extraction fallback:", pdfErr);
+        }
+      } else if (file.type.startsWith("image/")) {
+        // Real-Time OCR for Image files
         ocrText = await performClientOCR(file, (msg) => setAiScanFeedback(msg));
       }
 
@@ -193,7 +204,7 @@ export default function AdminDashboard() {
               title: aiResult.title || "",
               issuer: aiResult.issuer || "",
               issueDate: aiResult.issueDate || "",
-              category: aiResult.category || "Frontend Development",
+              category: aiResult.category || "Software & Web Development",
               skillsString: Array.isArray(aiResult.skills)
                 ? aiResult.skills.join(", ")
                 : (aiResult.skills || ""),
@@ -207,18 +218,19 @@ export default function AdminDashboard() {
         console.warn("Serverless AI skipped:", aiErr);
       }
 
-      // 3. Document Pattern Extractor using real OCR text extracted from certificate image
+      // 3. Document Pattern Extractor using real text extracted from PDF or OCR image
       if (!extractedData) {
         extractedData = extractCertificateMetadataFromFilenameAndText(file.name, ocrText);
       }
 
       // Check if extracted category is custom
       const standardCategories = [
-        "Frontend Development",
-        "Full-Stack & Backend",
-        "Computer Science",
-        "Cloud & DevOps",
-        "General"
+        "Software & Web Development",
+        "Tech & Computer Science",
+        "Soft Skills & Leadership",
+        "English & Languages",
+        "Workshops & Hackathons",
+        "Frontend Development"
       ];
       if (!standardCategories.includes(extractedData.category)) {
         setIsCustomCategory(true);
@@ -227,18 +239,20 @@ export default function AdminDashboard() {
         setIsCustomCategory(false);
       }
 
+      // Attach the image: either the generated PDF page 1 image or the uploaded picture
+      let finalImageUrl = "";
+      if (renderedPdfImage) {
+        finalImageUrl = renderedPdfImage;
+      } else if (file.type.startsWith("image/")) {
+        finalImageUrl = await CertificateService.uploadCertificateImage(file);
+      }
+
       setForm((prev) => ({
         ...prev,
         ...extractedData,
+        imageUrl: finalImageUrl || prev.imageUrl,
         issuerLogo: matchOrganizationLogo(extractedData.issuer)
       }));
-
-      // Automatically attach and upload the image file permanently
-      if (file.type.startsWith("image/")) {
-        CertificateService.uploadCertificateImage(file)
-          .then((imageUrl) => setForm((prev) => ({ ...prev, imageUrl })))
-          .catch((uploadError) => console.warn("Image attach error:", uploadError));
-      }
 
       setAiScanFeedback("✨ Certificate text & image scanned successfully! Review details and click Publish.");
     } catch (err) {
