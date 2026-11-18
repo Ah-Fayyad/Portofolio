@@ -7,6 +7,7 @@ import {
   supabase
 } from "../lib/supabaseClient";
 import { extractCertificateMetadataFromFilenameAndText } from "../lib/certificateExtractor";
+import { performClientOCR } from "../lib/ocrService";
 import {
   Award,
   Trash2,
@@ -50,6 +51,8 @@ export default function AdminDashboard() {
     featured: false
   };
   const [form, setForm] = useState(emptyForm);
+  const [isCustomCategory, setIsCustomCategory] = useState(false);
+  const [customCategoryInput, setCustomCategoryInput] = useState("");
   const [isScanningAI, setIsScanningAI] = useState(false);
   const [aiScanFeedback, setAiScanFeedback] = useState(null);
   const [aiScanError, setAiScanError] = useState(false);
@@ -147,14 +150,14 @@ export default function AdminDashboard() {
       reader.readAsDataURL(file);
     });
 
-  // 100% Automatic Intelligent Certificate Scanner
+  // 100% Automatic Intelligent Certificate Scanner with Real-Image OCR
   const handleAICertificateScan = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     setIsScanningAI(true);
     setAiScanError(false);
-    setAiScanFeedback("Auto scanning and analyzing certificate structure...");
+    setAiScanFeedback("Analyzing certificate image & reading text content...");
 
     if (!["image/jpeg", "image/png", "image/webp", "application/pdf"].includes(file.type)) {
       setAiScanError(true);
@@ -167,7 +170,13 @@ export default function AdminDashboard() {
     try {
       let extractedData = null;
 
-      // First, try serverless AI pipeline if available
+      // 1. Try Real-Time Client OCR to extract actual text from image pixels
+      let ocrText = "";
+      if (file.type.startsWith("image/")) {
+        ocrText = await performClientOCR(file, (msg) => setAiScanFeedback(msg));
+      }
+
+      // 2. Try Serverless AI Gemini pipeline if available
       try {
         const base64 = await fileToBase64(file);
         const response = await fetch("/api/gemini-certificate", {
@@ -194,12 +203,27 @@ export default function AdminDashboard() {
           }
         }
       } catch (aiErr) {
-        console.warn("Serverless AI scan bypassed, using instant auto-matcher:", aiErr);
+        console.warn("Serverless AI skipped:", aiErr);
       }
 
-      // Auto Fallback: Instant Document & Filename Pattern Extractor
+      // 3. Document Pattern Extractor using real OCR text extracted from certificate image
       if (!extractedData) {
-        extractedData = extractCertificateMetadataFromFilenameAndText(file.name, "");
+        extractedData = extractCertificateMetadataFromFilenameAndText(file.name, ocrText);
+      }
+
+      // Check if extracted category is custom
+      const standardCategories = [
+        "Frontend Development",
+        "Full-Stack & Backend",
+        "Computer Science",
+        "Cloud & DevOps",
+        "General"
+      ];
+      if (!standardCategories.includes(extractedData.category)) {
+        setIsCustomCategory(true);
+        setCustomCategoryInput(extractedData.category);
+      } else {
+        setIsCustomCategory(false);
       }
 
       setForm((prev) => ({
@@ -208,17 +232,16 @@ export default function AdminDashboard() {
         issuerLogo: matchOrganizationLogo(extractedData.issuer)
       }));
 
-      // Automatically attach and upload the image file to Supabase/local storage
+      // Automatically attach and upload the image file permanently
       if (file.type.startsWith("image/")) {
         CertificateService.uploadCertificateImage(file)
           .then((imageUrl) => setForm((prev) => ({ ...prev, imageUrl })))
-          .catch((uploadError) => console.warn("Scanned image preview error:", uploadError));
+          .catch((uploadError) => console.warn("Image attach error:", uploadError));
       }
 
-      setAiScanFeedback("✨ Certificate details extracted automatically! Please review and click Publish.");
+      setAiScanFeedback("✨ Certificate text & image scanned successfully! Review details and click Publish.");
     } catch (err) {
       console.error("Auto scan failed:", err);
-      // Even in rare case of error, auto-populate from filename
       const fallback = extractCertificateMetadataFromFilenameAndText(file.name, "");
       setForm((prev) => ({
         ...prev,
@@ -278,6 +301,21 @@ export default function AdminDashboard() {
   // Populate Edit Form
   const startEdit = (cert) => {
     setEditingCert(cert);
+    const standardCategories = [
+      "Frontend Development",
+      "Full-Stack & Backend",
+      "Computer Science",
+      "Cloud & DevOps",
+      "General"
+    ];
+    if (cert.category && !standardCategories.includes(cert.category)) {
+      setIsCustomCategory(true);
+      setCustomCategoryInput(cert.category);
+    } else {
+      setIsCustomCategory(false);
+      setCustomCategoryInput("");
+    }
+
     setForm({
       title: cert.title || "",
       issuer: cert.issuer || "",
@@ -543,17 +581,44 @@ export default function AdminDashboard() {
                 <label className="block text-xs font-bold uppercase text-muted-foreground mb-1.5">
                   Category
                 </label>
-                <select
-                  value={form.category}
-                  onChange={(e) => setForm({ ...form, category: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-xl border border-border bg-muted/30 text-sm focus:border-sky-500 outline-hidden text-foreground"
-                >
-                  <option value="Frontend Development">Frontend Development</option>
-                  <option value="Full-Stack & Backend">Full-Stack &amp; Backend</option>
-                  <option value="Computer Science">Computer Science</option>
-                  <option value="Cloud & DevOps">Cloud &amp; DevOps</option>
-                  <option value="General">General</option>
-                </select>
+                <div className="space-y-2">
+                  <select
+                    value={isCustomCategory ? "Other" : form.category}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "Other") {
+                        setIsCustomCategory(true);
+                        setForm({ ...form, category: customCategoryInput || "Custom Track" });
+                      } else {
+                        setIsCustomCategory(false);
+                        setForm({ ...form, category: val });
+                      }
+                    }}
+                    className="w-full px-4 py-2.5 rounded-xl border border-border bg-muted/30 text-sm focus:border-sky-500 outline-hidden text-foreground"
+                  >
+                    <option value="Frontend Development">Frontend Development</option>
+                    <option value="Full-Stack & Backend">Full-Stack &amp; Backend</option>
+                    <option value="Computer Science">Computer Science</option>
+                    <option value="Cloud & DevOps">Cloud &amp; DevOps</option>
+                    <option value="General">General</option>
+                    <option value="Other">Other (Custom category...)</option>
+                  </select>
+
+                  {isCustomCategory && (
+                    <input
+                      type="text"
+                      required
+                      value={customCategoryInput}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setCustomCategoryInput(val);
+                        setForm({ ...form, category: val });
+                      }}
+                      placeholder="Type your custom category name..."
+                      className="w-full px-4 py-2 rounded-xl border border-sky-500/40 bg-sky-500/5 text-sm focus:border-sky-500 outline-hidden"
+                    />
+                  )}
+                </div>
               </div>
 
               <div>
