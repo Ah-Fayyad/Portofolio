@@ -1,12 +1,13 @@
-import { createClient } from "@supabase/supabase-js";
+import { openDB } from "idb";
 import { initialCertificates, organizationLogos } from "../data/portfolioData";
+import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 export const isSupabaseConfigured = Boolean(
-  supabaseUrl && 
-  supabaseAnonKey && 
+  supabaseUrl &&
+  supabaseAnonKey &&
   supabaseUrl !== "https://your-project.supabase.co"
 );
 
@@ -14,28 +15,69 @@ export const supabase = isSupabaseConfigured
   ? createClient(supabaseUrl, supabaseAnonKey)
   : null;
 
-// Local fallback storage key for zero-config persistence
-const LOCAL_STORAGE_KEY = "ahmed_portfolio_certificates";
+// Persistent IndexedDB Store (Can store hundreds of megabytes of high-res images permanently)
+const DB_NAME = "ahmed_portfolio_db";
+const DB_VERSION = 1;
+const STORE_NAME = "certificates";
 
-function getLocalCertificates() {
-  try {
-    const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (!raw) {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(initialCertificates));
-      return initialCertificates;
-    }
-    return JSON.parse(raw);
-  } catch (e) {
-    console.error("Local storage error:", e);
-    return initialCertificates;
-  }
+async function getDB() {
+  return openDB(DB_NAME, DB_VERSION, {
+    upgrade(db) {
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME, { keyPath: "id" });
+      }
+    },
+  });
 }
 
-function saveLocalCertificates(certs) {
+// Compress image to ensure optimal load times & storage durability
+async function compressImageToDataUrl(file, maxWidth = 1600, quality = 0.85) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// Initialize and seed default certificates if IndexedDB is empty
+async function getStoredCertificates() {
   try {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(certs));
-  } catch (e) {
-    console.error("Error saving certificates locally:", e);
+    const db = await getDB();
+    const all = await db.getAll(STORE_NAME);
+    if (!all || all.length === 0) {
+      // Seed initial
+      const tx = db.transaction(STORE_NAME, "readwrite");
+      for (const cert of initialCertificates) {
+        await tx.store.put(cert);
+      }
+      await tx.done;
+      return initialCertificates;
+    }
+    return all;
+  } catch (err) {
+    console.error("IndexedDB read error, falling back to initial data:", err);
+    return initialCertificates;
   }
 }
 
@@ -87,7 +129,7 @@ export const CertificateService = {
         console.warn("Supabase fetch fallback to local store:", err.message);
       }
     }
-    return getLocalCertificates();
+    return await getStoredCertificates();
   },
 
   async create(cert) {
@@ -128,9 +170,9 @@ export const CertificateService = {
       }
     }
 
-    const current = getLocalCertificates();
-    const updated = [newCert, ...current];
-    saveLocalCertificates(updated);
+    // Persist permanently in IndexedDB
+    const db = await getDB();
+    await db.put(STORE_NAME, newCert);
     return newCert;
   },
 
@@ -164,10 +206,12 @@ export const CertificateService = {
       }
     }
 
-    const current = getLocalCertificates();
-    const updated = current.map((c) => (c.id === id ? { ...c, ...updates } : c));
-    saveLocalCertificates(updated);
-    return updated.find((c) => c.id === id);
+    // Persist permanently in IndexedDB
+    const db = await getDB();
+    const existing = (await db.get(STORE_NAME, id)) || {};
+    const updated = { ...existing, ...updates, id };
+    await db.put(STORE_NAME, updated);
+    return updated;
   },
 
   async delete(id) {
@@ -183,9 +227,9 @@ export const CertificateService = {
       }
     }
 
-    const current = getLocalCertificates();
-    const updated = current.filter((c) => c.id !== id);
-    saveLocalCertificates(updated);
+    // Delete permanently from IndexedDB
+    const db = await getDB();
+    await db.delete(STORE_NAME, id);
     return true;
   },
 
@@ -212,12 +256,7 @@ export const CertificateService = {
       }
     }
 
-    // Local fallback: convert to base64 Data URL for persistent storage
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
+    // Local permanent mode: Compress & save as high-quality persistent Data URL
+    return await compressImageToDataUrl(file);
   }
 };
