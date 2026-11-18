@@ -33,6 +33,7 @@ export default function AdminDashboard() {
   const [certificates, setCertificates] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [adminSelectedCategory, setAdminSelectedCategory] = useState("All");
   const [editingCert, setEditingCert] = useState(null);
 
   // Form State
@@ -334,10 +335,16 @@ export default function AdminDashboard() {
   };
 
   // Filtered for Admin Table
-  const filteredCerts = certificates.filter((c) =>
-    c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.issuer.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredCerts = certificates.filter((c) => {
+    const q = searchQuery.toLowerCase();
+    const matchesSearch =
+      c.title.toLowerCase().includes(q) ||
+      c.issuer.toLowerCase().includes(q) ||
+      (c.skills && c.skills.some((s) => s.toLowerCase().includes(q)));
+    const matchesCat =
+      adminSelectedCategory === "All" || c.category === adminSelectedCategory;
+    return matchesSearch && matchesCat;
+  });
 
   // 1. Login View
   if (!isAuthenticated) {
@@ -577,50 +584,71 @@ export default function AdminDashboard() {
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-bold uppercase text-muted-foreground mb-1.5">
-                  Category
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-bold uppercase text-muted-foreground mb-2">
+                  Certificate Track / Category *
                 </label>
-                <div className="space-y-2">
-                  <select
-                    value={isCustomCategory ? "Other" : form.category}
+                
+                {/* Visual Category Selection Pills */}
+                <div className="flex flex-wrap gap-2 mb-2.5">
+                  {[
+                    "Software & Web Development",
+                    "Tech & Computer Science",
+                    "Soft Skills & Leadership",
+                    "English & Languages",
+                    "Workshops & Hackathons",
+                    "Frontend Development"
+                  ].map((track) => {
+                    const isSelected = !isCustomCategory && form.category === track;
+                    return (
+                      <button
+                        key={track}
+                        type="button"
+                        onClick={() => {
+                          setIsCustomCategory(false);
+                          setForm({ ...form, category: track });
+                        }}
+                        className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                          isSelected
+                            ? "bg-sky-500 text-white border-sky-400 shadow-md shadow-sky-500/25 scale-[1.02]"
+                            : "bg-muted/30 hover:bg-muted text-muted-foreground hover:text-foreground border-border"
+                        }`}
+                      >
+                        {track}
+                      </button>
+                    );
+                  })}
+                  
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCustomCategory(true);
+                      setForm({ ...form, category: customCategoryInput || "Custom Track" });
+                    }}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                      isCustomCategory
+                        ? "bg-sky-500 text-white border-sky-400 shadow-md shadow-sky-500/25 scale-[1.02]"
+                        : "bg-muted/30 hover:bg-muted text-muted-foreground hover:text-foreground border-border"
+                    }`}
+                  >
+                    + Other (Custom...)
+                  </button>
+                </div>
+
+                {isCustomCategory && (
+                  <input
+                    type="text"
+                    required
+                    value={customCategoryInput}
                     onChange={(e) => {
                       const val = e.target.value;
-                      if (val === "Other") {
-                        setIsCustomCategory(true);
-                        setForm({ ...form, category: customCategoryInput || "Custom Track" });
-                      } else {
-                        setIsCustomCategory(false);
-                        setForm({ ...form, category: val });
-                      }
+                      setCustomCategoryInput(val);
+                      setForm({ ...form, category: val });
                     }}
-                    className="w-full px-4 py-2.5 rounded-xl border border-border bg-muted/30 text-sm focus:border-sky-500 outline-hidden text-foreground"
-                  >
-                    <option value="Software & Web Development">Software &amp; Web Development</option>
-                    <option value="Tech & Computer Science">Tech &amp; Computer Science</option>
-                    <option value="Soft Skills & Leadership">Soft Skills &amp; Leadership</option>
-                    <option value="English & Languages">English &amp; Languages</option>
-                    <option value="Workshops & Hackathons">Workshops &amp; Hackathons</option>
-                    <option value="Frontend Development">Frontend Development</option>
-                    <option value="General">General</option>
-                    <option value="Other">Other (Custom category...)</option>
-                  </select>
-
-                  {isCustomCategory && (
-                    <input
-                      type="text"
-                      required
-                      value={customCategoryInput}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setCustomCategoryInput(val);
-                        setForm({ ...form, category: val });
-                      }}
-                      placeholder="Type your custom category name..."
-                      className="w-full px-4 py-2 rounded-xl border border-sky-500/40 bg-sky-500/5 text-sm focus:border-sky-500 outline-hidden"
-                    />
-                  )}
-                </div>
+                    placeholder="Type your custom track name (e.g. AI & Data Science, Public Speaking...)"
+                    className="w-full px-4 py-2.5 rounded-xl border border-sky-500/40 bg-sky-500/5 text-sm focus:border-sky-500 outline-hidden"
+                  />
+                )}
               </div>
 
               <div>
@@ -722,14 +750,14 @@ export default function AdminDashboard() {
         </div>
 
         {/* Existing Certificates Management Table */}
-        <div className="p-7 sm:p-9 rounded-3xl border border-border bg-card shadow-lg">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+        <div className="p-7 sm:p-9 rounded-3xl border border-border bg-card shadow-lg space-y-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h3 className="text-lg font-bold text-foreground">
                 Existing Certificates ({filteredCerts.length})
               </h3>
               <p className="text-xs text-muted-foreground">
-                Manage, edit, or delete credentials from your database.
+                Manage, edit, or delete credentials from your persistent database.
               </p>
             </div>
 
@@ -743,6 +771,28 @@ export default function AdminDashboard() {
                 className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-border bg-muted/30 outline-hidden"
               />
             </div>
+          </div>
+
+          {/* Quick Filter Pills in Admin Table */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+            {["All", ...new Set(certificates.map((c) => c.category || "General"))].map((cat) => {
+              const isSelected = adminSelectedCategory === cat;
+              const count = cat === "All" ? certificates.length : certificates.filter((c) => c.category === cat).length;
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setAdminSelectedCategory(cat)}
+                  className={`px-3 py-1 rounded-xl text-xs font-semibold border transition-all cursor-pointer shrink-0 ${
+                    isSelected
+                      ? "bg-sky-500 text-white border-sky-400 shadow-xs"
+                      : "bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground border-border"
+                  }`}
+                >
+                  <span>{cat}</span>
+                  <span className="ml-1.5 opacity-75">({count})</span>
+                </button>
+              );
+            })}
           </div>
 
           <div className="overflow-x-auto">
