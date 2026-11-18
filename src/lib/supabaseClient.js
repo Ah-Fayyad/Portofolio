@@ -88,7 +88,14 @@ export function matchOrganizationLogo(orgName) {
   if (!orgName) return null;
   const clean = orgName.toLowerCase().trim();
   for (const [key, org] of Object.entries(organizationLogos)) {
-    if (clean.includes(key) || clean.includes(org.name.toLowerCase())) {
+    if (
+      clean.includes(key) ||
+      clean.includes(org.name.toLowerCase()) ||
+      (key === "edraak" && (clean.includes("إدراك") || clean.includes("edraak"))) ||
+      (key === "almdrasa" && (clean.includes("المدرسة") || clean.includes("almdrasa") || clean.includes("elmdrasa"))) ||
+      (key === "iti" && (clean.includes("iti") || clean.includes("information technology institute"))) ||
+      (key === "aou" && (clean.includes("aou") || clean.includes("arab open university")))
+    ) {
       return key;
     }
   }

@@ -212,6 +212,11 @@ export const initialCertificates = [
 ];
 
 export const organizationLogos = {
+  edraak: {
+    name: "Edraak",
+    color: "#009688",
+    svg: `<svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="20" fill="#009688"/><path d="M25 50C25 36.19 36.19 25 50 25C63.81 25 75 36.19 75 50C75 63.81 63.81 75 50 75" stroke="white" stroke-width="8" stroke-linecap="round"/><circle cx="50" cy="50" r="10" fill="white"/><path d="M70 30L85 15M85 15H72M85 15V28" stroke="white" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+  },
   almdrasa: {
     name: "Almdrasa",
     color: "#2563EB",
@@ -251,6 +256,26 @@ export const organizationLogos = {
     name: "Udemy",
     color: "#A435F0",
     svg: `<svg viewBox="0 0 24 24" fill="#A435F0"><path d="M12 2L2 7v10l10 5 10-5V7L12 2zm0 3.2l7 3.5v6.6l-7 3.5-7-3.5V8.7l7-3.5z"/></svg>`
+  },
+  udacity: {
+    name: "Udacity",
+    color: "#02B3E4",
+    svg: `<svg viewBox="0 0 24 24" fill="#02B3E4"><path d="M12 2L2 8l10 6 10-6-10-6zm0 13L4 9.5V17l8 5 8-5V9.5L12 15z"/></svg>`
+  },
+  iti: {
+    name: "ITI",
+    color: "#E53935",
+    svg: `<svg viewBox="0 0 24 24" fill="#E53935"><rect width="24" height="24" rx="4" fill="#E53935"/><text x="12" y="16" fill="white" font-size="9" font-weight="900" text-anchor="middle" font-family="sans-serif">ITI</text></svg>`
+  },
+  maharatech: {
+    name: "Mahara-Tech",
+    color: "#2E7D32",
+    svg: `<svg viewBox="0 0 24 24" fill="#2E7D32"><rect width="24" height="24" rx="4" fill="#2E7D32"/><text x="12" y="16" fill="white" font-size="8" font-weight="bold" text-anchor="middle" font-family="sans-serif">MT</text></svg>`
+  },
+  aou: {
+    name: "AOU",
+    color: "#1E3A8A",
+    svg: `<svg viewBox="0 0 24 24" fill="#1E3A8A"><rect width="24" height="24" rx="4" fill="#1E3A8A"/><path d="M12 4L4 9v6l8 5 8-5V9l-8-5z" fill="white"/><text x="12" y="15" fill="#1E3A8A" font-size="7" font-weight="bold" text-anchor="middle">AOU</text></svg>`
   },
   freecodecamp: {
     name: "freeCodeCamp",
