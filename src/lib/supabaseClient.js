@@ -248,13 +248,13 @@ export const CertificateService = {
         const filePath = `certificates/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
-          .from("certificates")
+          .from("portfolio_certificates")
           .upload(filePath, file);
 
         if (uploadError) throw uploadError;
 
         const { data } = supabase.storage
-          .from("certificates")
+          .from("portfolio_certificates")
           .getPublicUrl(filePath);
 
         return data.publicUrl;
