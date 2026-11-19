@@ -20,7 +20,8 @@ import {
   LogOut,
   AlertCircle,
   Eye,
-  Search
+  Search,
+  X
 } from "lucide-react";
 
 export default function AdminDashboard() {
@@ -137,6 +138,13 @@ export default function AdminDashboard() {
     if (!file) return;
 
     try {
+      if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
+        const pdfResult = await processPdfCertificate(file);
+        if (pdfResult.imageUrl) {
+          setForm((prev) => ({ ...prev, imageUrl: pdfResult.imageUrl }));
+          return;
+        }
+      }
       const uploadedUrl = await CertificateService.uploadCertificateImage(file);
       setForm((prev) => ({ ...prev, imageUrl: uploadedUrl }));
     } catch (err) {
@@ -723,18 +731,35 @@ export default function AdminDashboard() {
               <label className="block text-xs font-bold uppercase text-muted-foreground mb-1.5">
                 Certificate Image File
               </label>
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center gap-3">
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/*,.pdf"
                   onChange={handleImageUpload}
-                  className="text-xs file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-sky-500/10 file:text-sky-500 hover:file:bg-sky-500/20"
+                  className="text-xs file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-sky-500/10 file:text-sky-500 hover:file:bg-sky-500/20 cursor-pointer"
                 />
                 {form.imageUrl && (
-                  <span className="text-xs text-emerald-500 flex items-center gap-1">
-                    <CheckCircle2 size={13} />
-                    Image Ready
-                  </span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs text-emerald-500 font-medium flex items-center gap-1.5 whitespace-nowrap bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1 rounded-full">
+                      <CheckCircle2 size={13} className="shrink-0" />
+                      <span>Image Ready</span>
+                    </span>
+                    <div className="flex items-center gap-1.5 bg-muted/40 p-1 rounded-lg border border-border">
+                      <img
+                        src={form.imageUrl}
+                        alt="Certificate Preview"
+                        className="w-10 h-7 object-cover rounded border border-border shadow-xs"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setForm((prev) => ({ ...prev, imageUrl: "" }))}
+                        className="p-1 text-muted-foreground hover:text-rose-500 rounded-md transition-colors cursor-pointer"
+                        title="Remove image"
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
@@ -814,10 +839,10 @@ export default function AdminDashboard() {
               <thead className="border-b border-border text-muted-foreground uppercase font-bold">
                 <tr>
                   <th className="py-3 px-3">Title</th>
-                  <th className="py-3 px-3">Issuer</th>
-                  <th className="py-3 px-3">Year</th>
-                  <th className="py-3 px-3">Category</th>
-                  <th className="py-3 px-3 text-right">Actions</th>
+                  <th className="py-3 px-3 whitespace-nowrap">Issuer</th>
+                  <th className="py-3 px-3 whitespace-nowrap">Year</th>
+                  <th className="py-3 px-3 whitespace-nowrap">Category</th>
+                  <th className="py-3 px-3 text-right whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -837,31 +862,35 @@ export default function AdminDashboard() {
                   filteredCerts.map((cert) => (
                     <tr key={cert.id} className="hover:bg-muted/30 transition-colors">
                     <td className="py-3 px-3 font-semibold text-foreground">
-                      {cert.title}
-                      {cert.featured && (
-                        <span className="ml-2 text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 font-bold">
-                          Featured
-                        </span>
-                      )}
+                      <div className="flex items-center gap-2">
+                        <span>{cert.title}</span>
+                        {cert.featured && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold whitespace-nowrap shrink-0">
+                            Featured
+                          </span>
+                        )}
+                      </div>
                     </td>
-                    <td className="py-3 px-3 text-muted-foreground">{cert.issuer}</td>
-                    <td className="py-3 px-3 text-muted-foreground">{cert.issueDate}</td>
-                    <td className="py-3 px-3 text-muted-foreground">{cert.category}</td>
-                    <td className="py-3 px-3 text-right space-x-2">
-                      <button
-                        onClick={() => startEdit(cert)}
-                        className="p-1.5 rounded-lg border border-border hover:bg-sky-500/10 hover:text-sky-400"
-                        title="Edit certificate"
-                      >
-                        <Edit3 size={13} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(cert.id)}
-                        className="p-1.5 rounded-lg border border-border hover:bg-rose-500/10 hover:text-rose-500"
-                        title="Delete certificate"
-                      >
-                        <Trash2 size={13} />
-                      </button>
+                    <td className="py-3 px-3 text-muted-foreground whitespace-nowrap">{cert.issuer}</td>
+                    <td className="py-3 px-3 text-muted-foreground whitespace-nowrap">{cert.issueDate}</td>
+                    <td className="py-3 px-3 text-muted-foreground whitespace-nowrap">{cert.category}</td>
+                    <td className="py-3 px-3 text-right whitespace-nowrap">
+                      <div className="inline-flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => startEdit(cert)}
+                          className="p-1.5 rounded-lg border border-border hover:bg-sky-500/10 hover:text-sky-400 transition-colors cursor-pointer"
+                          title="Edit certificate"
+                        >
+                          <Edit3 size={13} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(cert.id)}
+                          className="p-1.5 rounded-lg border border-border hover:bg-rose-500/10 hover:text-rose-500 transition-colors cursor-pointer"
+                          title="Delete certificate"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )))}
