@@ -21,7 +21,8 @@ import {
   AlertCircle,
   Eye,
   Search,
-  X
+  X,
+  GripVertical
 } from "lucide-react";
 
 export default function AdminDashboard() {
@@ -37,6 +38,10 @@ export default function AdminDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [adminSelectedCategory, setAdminSelectedCategory] = useState("All");
   const [editingCert, setEditingCert] = useState(null);
+  const [draggedCertificateId, setDraggedCertificateId] = useState(null);
+  const [isReorderingCertificates, setIsReorderingCertificates] = useState(false);
+  const [reorderFeedback, setReorderFeedback] = useState("");
+  const [reorderError, setReorderError] = useState(false);
 
   // Form State
   const emptyForm = {
@@ -297,7 +302,13 @@ export default function AdminDashboard() {
       credentialId: form.credentialId,
       credentialUrl: form.credentialUrl,
       imageUrl: form.imageUrl,
-      featured: form.featured
+      featured: form.featured,
+      sortOrder:
+        editingCert?.sortOrder ??
+        certificates.reduce(
+          (highest, certificate) => Math.max(highest, certificate.sortOrder ?? -1),
+          -1
+        ) + 1
     };
 
     if (editingCert) {
@@ -318,6 +329,40 @@ export default function AdminDashboard() {
     if (window.confirm("Are you sure you want to delete this certificate? This action cannot be undone.")) {
       await CertificateService.delete(id);
       loadCertificates();
+    }
+  };
+
+  const handleCertificateDrop = async (targetId) => {
+    if (
+      !draggedCertificateId ||
+      draggedCertificateId === targetId ||
+      isReorderingCertificates
+    ) {
+      return;
+    }
+
+    const reordered = [...certificates];
+    const sourceIndex = reordered.findIndex((cert) => cert.id === draggedCertificateId);
+    const targetIndex = reordered.findIndex((cert) => cert.id === targetId);
+    if (sourceIndex < 0 || targetIndex < 0) return;
+
+    const [movedCertificate] = reordered.splice(sourceIndex, 1);
+    reordered.splice(targetIndex, 0, movedCertificate);
+    setIsReorderingCertificates(true);
+    setReorderFeedback("");
+    setReorderError(false);
+
+    try {
+      await CertificateService.reorder(reordered.map((cert) => cert.id));
+      setCertificates(reordered.map((cert, sortOrder) => ({ ...cert, sortOrder })));
+      setReorderFeedback("Certificate order saved.");
+    } catch (err) {
+      console.error("Could not save certificate order:", err);
+      setReorderError(true);
+      setReorderFeedback(err.message || "Could not save certificate order.");
+    } finally {
+      setDraggedCertificateId(null);
+      setIsReorderingCertificates(false);
     }
   };
 
@@ -834,10 +879,26 @@ export default function AdminDashboard() {
             })}
           </div>
 
+          {reorderFeedback && (
+            <p className={`text-xs ${reorderError ? "text-rose-400" : "text-emerald-400"}`}>
+              {reorderFeedback}
+            </p>
+          )}
+          {searchQuery || adminSelectedCategory !== "All" ? (
+            <p className="text-xs text-muted-foreground">
+              Clear the search and select All to reorder the full certificate list.
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Drag the handle to arrange certificates. The gallery uses this order by default.
+            </p>
+          )}
+
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="border-b border-border text-muted-foreground uppercase font-bold">
                 <tr>
+                  <th className="py-3 px-2 w-8" aria-label="Drag to reorder" />
                   <th className="py-3 px-3">Title</th>
                   <th className="py-3 px-3 whitespace-nowrap">Issuer</th>
                   <th className="py-3 px-3 whitespace-nowrap">Year</th>
@@ -848,19 +909,54 @@ export default function AdminDashboard() {
               <tbody className="divide-y divide-border">
                 {loading ? (
                   <tr>
-                    <td colSpan={5} className="py-8 text-center text-muted-foreground">
+                    <td colSpan={6} className="py-8 text-center text-muted-foreground">
                       Loading certificates...
                     </td>
                   </tr>
                 ) : filteredCerts.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-8 text-center text-muted-foreground">
+                    <td colSpan={6} className="py-8 text-center text-muted-foreground">
                       No certificates found. Add one above!
                     </td>
                   </tr>
                 ) : (
                   filteredCerts.map((cert) => (
-                    <tr key={cert.id} className="hover:bg-muted/30 transition-colors">
+                    <tr
+                      key={cert.id}
+                      draggable={!searchQuery && adminSelectedCategory === "All" && !isReorderingCertificates}
+                      onDragStart={(event) => {
+                        setDraggedCertificateId(cert.id);
+                        event.dataTransfer.effectAllowed = "move";
+                        event.dataTransfer.setData("text/plain", cert.id);
+                      }}
+                      onDragOver={(event) => {
+                        if (!searchQuery && adminSelectedCategory === "All") {
+                          event.preventDefault();
+                          event.dataTransfer.dropEffect = "move";
+                        }
+                      }}
+                      onDrop={(event) => {
+                        event.preventDefault();
+                        handleCertificateDrop(cert.id);
+                      }}
+                      onDragEnd={() => setDraggedCertificateId(null)}
+                      className={`transition-colors ${
+                        draggedCertificateId === cert.id
+                          ? "opacity-40"
+                          : "hover:bg-muted/30"
+                      }`}
+                    >
+                    <td className="py-3 px-2 text-muted-foreground">
+                      <GripVertical
+                        size={15}
+                        className={`${
+                          searchQuery || adminSelectedCategory !== "All"
+                            ? "opacity-30"
+                            : "cursor-grab active:cursor-grabbing"
+                        }`}
+                        aria-label="Drag to reorder certificate"
+                      />
+                    </td>
                     <td className="py-3 px-3 font-semibold text-foreground">
                       <div className="flex items-center gap-2">
                         <span>{cert.title}</span>

@@ -47,9 +47,9 @@ export default function Education() {
               </div>
             </div>
 
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-sky-500/10 text-sky-400 border border-sky-500/20">
+            <div className="inline-flex flex-nowrap items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-sky-500/10 text-sky-400 border border-sky-500/20 whitespace-nowrap shrink-0">
               <Calendar size={13} />
-              <span>{edu.period}</span>
+              <span className="whitespace-nowrap">{edu.period}</span>
             </div>
           </div>
 

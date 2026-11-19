@@ -30,7 +30,7 @@ export default function CertificationsPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [sortBy, setSortBy] = useState("newest");
+  const [sortBy, setSortBy] = useState("custom");
   const [activeModalCert, setActiveModalCert] = useState(null);
   const shouldReduceMotion = useReducedMotion();
 
@@ -88,6 +88,9 @@ export default function CertificationsPage() {
       return matchesSearch && matchesCategory;
     })
     .sort((a, b) => {
+      if (sortBy === "custom") {
+        return (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
+      }
       if (sortBy === "newest") {
         return (b.issueDate || "").localeCompare(a.issueDate || "");
       }
@@ -237,6 +240,7 @@ export default function CertificationsPage() {
                 onChange={(e) => setSortBy(e.target.value)}
                 className="px-3.5 py-2 text-xs rounded-xl border border-border bg-muted/40 text-foreground focus:border-sky-500 outline-hidden cursor-pointer"
               >
+                <option value="custom">Custom Order</option>
                 <option value="newest">Newest First</option>
                 <option value="oldest">Oldest First</option>
                 <option value="title">Title (A - Z)</option>

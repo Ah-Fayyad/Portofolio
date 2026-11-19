@@ -116,7 +116,7 @@ export const CertificateService = {
 
         if (error) throw error;
         if (data && data.length > 0) {
-          return data.map((c) => ({
+          return data.map((c, index) => ({
             id: c.id,
             title: c.title,
             issuer: c.issuer,
@@ -129,21 +129,31 @@ export const CertificateService = {
             credentialId: c.credential_id,
             credentialUrl: c.credential_url,
             imageUrl: c.image_url,
-            featured: Boolean(c.featured)
-          }));
+            featured: Boolean(c.featured),
+            sortOrder: Number.isFinite(c.sort_order) ? c.sort_order : index
+          })).sort((a, b) => a.sortOrder - b.sortOrder);
         }
       } catch (err) {
         console.warn("Supabase fetch fallback to local store:", err.message);
       }
     }
-    return await getStoredCertificates();
+    const certificates = await getStoredCertificates();
+    return certificates
+      .map((certificate, index) => ({
+        ...certificate,
+        sortOrder: Number.isFinite(certificate.sortOrder)
+          ? certificate.sortOrder
+          : index
+      }))
+      .sort((a, b) => a.sortOrder - b.sortOrder);
   },
 
   async create(cert) {
     const newCert = {
       ...cert,
       id: cert.id || `cert-${Date.now()}`,
-      issuerLogo: cert.issuerLogo || matchOrganizationLogo(cert.issuer)
+      issuerLogo: cert.issuerLogo || matchOrganizationLogo(cert.issuer),
+      sortOrder: Number.isFinite(cert.sortOrder) ? cert.sortOrder : 0
     };
 
     if (isSupabaseConfigured) {
@@ -164,7 +174,8 @@ export const CertificateService = {
               credential_id: newCert.credentialId,
               credential_url: newCert.credentialUrl,
               image_url: newCert.imageUrl,
-              featured: newCert.featured
+              featured: newCert.featured,
+              sort_order: newCert.sortOrder
             }
           ])
           .select()
@@ -200,7 +211,8 @@ export const CertificateService = {
             credential_id: updates.credentialId,
             credential_url: updates.credentialUrl,
             image_url: updates.imageUrl,
-            featured: updates.featured
+            featured: updates.featured,
+            sort_order: updates.sortOrder
           })
           .eq("id", id)
           .select()
@@ -219,6 +231,30 @@ export const CertificateService = {
     const updated = { ...existing, ...updates, id };
     await db.put(STORE_NAME, updated);
     return updated;
+  },
+
+  async reorder(ids) {
+    if (isSupabaseConfigured) {
+      const { error } = await supabase.rpc("reorder_certificates", {
+        certificate_ids: ids
+      });
+      if (error) {
+        throw new Error(
+          `Could not save certificate order to Supabase: ${error.message}`
+        );
+      }
+      return;
+    }
+
+    const db = await getDB();
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    for (const [sortOrder, id] of ids.entries()) {
+      const certificate = await tx.store.get(id);
+      if (certificate) {
+        await tx.store.put({ ...certificate, sortOrder });
+      }
+    }
+    await tx.done;
   },
 
   async delete(id) {
