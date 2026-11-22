@@ -25,9 +25,25 @@ import {
   GripVertical
 } from "lucide-react";
 
+async function dataUrlToFile(dataUrl, fileName) {
+  const response = await fetch(dataUrl);
+  if (!response.ok) throw new Error("Could not prepare the certificate preview for upload.");
+  const blob = await response.blob();
+  const extension = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp"
+  }[blob.type] || "jpg";
+  const baseName = fileName.replace(/\.[^.]+$/, "");
+  return new File([blob], `${baseName}.${extension}`, {
+    type: blob.type || "image/jpeg"
+  });
+}
+
 export default function AdminDashboard() {
   // Authentication State
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authError, setAuthError] = useState("");
@@ -35,6 +51,7 @@ export default function AdminDashboard() {
   // Certificate Management State
   const [certificates, setCertificates] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [certificatesError, setCertificatesError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [adminSelectedCategory, setAdminSelectedCategory] = useState("All");
   const [editingCert, setEditingCert] = useState(null);
@@ -65,13 +82,40 @@ export default function AdminDashboard() {
   const [aiScanFeedback, setAiScanFeedback] = useState(null);
   const [aiScanError, setAiScanError] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
-  // Check existing session
+  // Restore only a real Supabase Auth session.
   useEffect(() => {
-    const adminSession = sessionStorage.getItem("ahmed_admin_session");
-    if (adminSession === "true") {
-      setIsAuthenticated(true);
+    if (!isSupabaseConfigured) {
+      setAuthLoading(false);
+      return;
     }
+
+    let active = true;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (active) {
+        setIsAuthenticated(Boolean(session));
+        setAuthLoading(false);
+      }
+    });
+
+    supabase.auth.getSession()
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (error) setAuthError(`Could not restore Supabase session: ${error.message}`);
+        setIsAuthenticated(Boolean(data.session));
+        setAuthLoading(false);
+      })
+      .catch((err) => {
+        if (!active) return;
+        setAuthError(`Could not restore Supabase session: ${err.message}`);
+        setAuthLoading(false);
+      });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Fetch certificates once authenticated
@@ -83,11 +127,14 @@ export default function AdminDashboard() {
 
   async function loadCertificates() {
     setLoading(true);
+    setCertificatesError("");
     try {
       const data = await CertificateService.getAll();
       setCertificates(data);
     } catch (err) {
-      console.error(err);
+      console.error("Could not load certificates:", err);
+      setCertificates([]);
+      setCertificatesError(err.message || "Could not load certificates from Supabase.");
     } finally {
       setLoading(false);
     }
@@ -98,42 +145,31 @@ export default function AdminDashboard() {
     e.preventDefault();
     setAuthError("");
 
-    const enteredPasscode = authPassword.trim();
-    const configuredPasscode = (
-      import.meta.env.VITE_ADMIN_PASSCODE ||
-      "Ahmed@2026"
-    ).trim();
-
-    // Local administrator passcodes work independently of Supabase.
-    if (enteredPasscode === "admin123" || enteredPasscode === configuredPasscode) {
-      setIsAuthenticated(true);
-      sessionStorage.setItem("ahmed_admin_session", "true");
+    if (!isSupabaseConfigured) {
+      setAuthError("Supabase is not configured. Set its project URL and public anon key in the deployment environment.");
       return;
     }
 
     if (isSupabaseConfigured) {
       try {
         const { error } = await supabase.auth.signInWithPassword({
-          email: authEmail || "ahfayyad.m@gmail.com",
-          password: enteredPasscode
+          email: authEmail.trim(),
+          password: authPassword
         });
         if (error) throw error;
-        setIsAuthenticated(true);
-        sessionStorage.setItem("ahmed_admin_session", "true");
-        return;
       } catch (err) {
         setAuthError(err.message || "Invalid authentication credentials.");
       }
     }
-    
-    setAuthError("Incorrect administrator passcode.");
   };
 
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    sessionStorage.removeItem("ahmed_admin_session");
-    if (isSupabaseConfigured) {
-      supabase.auth.signOut();
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      setIsAuthenticated(false);
+    } catch (err) {
+      setAuthError(`Could not sign out: ${err.message}`);
     }
   };
 
@@ -146,14 +182,21 @@ export default function AdminDashboard() {
       if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
         const pdfResult = await processPdfCertificate(file);
         if (pdfResult.imageUrl) {
-          setForm((prev) => ({ ...prev, imageUrl: pdfResult.imageUrl }));
+          const previewFile = await dataUrlToFile(pdfResult.imageUrl, "certificate-preview.jpg");
+          const uploadedUrl = await CertificateService.uploadCertificateImage(previewFile);
+          setForm((prev) => ({ ...prev, imageUrl: uploadedUrl }));
           return;
         }
+        throw new Error("Could not create an image preview from this PDF.");
       }
       const uploadedUrl = await CertificateService.uploadCertificateImage(file);
       setForm((prev) => ({ ...prev, imageUrl: uploadedUrl }));
     } catch (err) {
       console.error("Image upload failed:", err);
+      setAiScanError(true);
+      setAiScanFeedback(err.message || "Could not upload the image to Supabase.");
+    } finally {
+      e.target.value = "";
     }
   };
 
@@ -255,7 +298,8 @@ export default function AdminDashboard() {
       // Attach the image: either the generated PDF page 1 image or the uploaded picture
       let finalImageUrl = "";
       if (renderedPdfImage) {
-        finalImageUrl = renderedPdfImage;
+        const previewFile = await dataUrlToFile(renderedPdfImage, "certificate-preview.jpg");
+        finalImageUrl = await CertificateService.uploadCertificateImage(previewFile);
       } else if (file.type.startsWith("image/")) {
         finalImageUrl = await CertificateService.uploadCertificateImage(file);
       }
@@ -270,13 +314,8 @@ export default function AdminDashboard() {
       setAiScanFeedback("✨ Certificate text & image scanned successfully! Review details and click Publish.");
     } catch (err) {
       console.error("Auto scan failed:", err);
-      const fallback = extractCertificateMetadataFromFilenameAndText(file.name, "");
-      setForm((prev) => ({
-        ...prev,
-        ...fallback,
-        issuerLogo: matchOrganizationLogo(fallback.issuer)
-      }));
-      setAiScanFeedback("Certificate uploaded! Details populated from document metadata.");
+      setAiScanError(true);
+      setAiScanFeedback(err.message || "Certificate scan or upload failed. Please try again.");
     } finally {
       setIsScanningAI(false);
       e.target.value = "";
@@ -286,6 +325,8 @@ export default function AdminDashboard() {
   // Save Certificate
   const handleSaveCertificate = async (e) => {
     e.preventDefault();
+    setSaveError("");
+    setSaveSuccess(false);
     const skillsArray = form.skillsString
       ? form.skillsString.split(",").map((s) => s.trim()).filter(Boolean)
       : [];
@@ -311,24 +352,34 @@ export default function AdminDashboard() {
         ) + 1
     };
 
-    if (editingCert) {
-      await CertificateService.update(editingCert.id, certPayload);
-    } else {
-      await CertificateService.create(certPayload);
-    }
+    try {
+      if (editingCert) {
+        await CertificateService.update(editingCert.id, certPayload);
+      } else {
+        await CertificateService.create(certPayload);
+      }
 
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 3000);
-    setForm(emptyForm);
-    setEditingCert(null);
-    loadCertificates();
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+      setForm(emptyForm);
+      setEditingCert(null);
+      await loadCertificates();
+    } catch (err) {
+      console.error("Could not save certificate:", err);
+      setSaveError(err.message || "Could not save certificate to Supabase.");
+    }
   };
 
   // Delete Certificate
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this certificate? This action cannot be undone.")) {
-      await CertificateService.delete(id);
-      loadCertificates();
+      try {
+        await CertificateService.delete(id);
+        await loadCertificates();
+      } catch (err) {
+        console.error("Could not delete certificate:", err);
+        setCertificatesError(err.message || "Could not delete certificate from Supabase.");
+      }
     }
   };
 
@@ -413,6 +464,14 @@ export default function AdminDashboard() {
     return matchesSearch && matchesCat;
   });
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
+        <div className="w-8 h-8 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   // 1. Login View
   if (!isAuthenticated) {
     return (
@@ -430,6 +489,13 @@ export default function AdminDashboard() {
             </p>
           </div>
 
+          {!isSupabaseConfigured && (
+            <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs flex items-center gap-2 mb-5">
+              <AlertCircle size={16} className="shrink-0" />
+              <span>Admin access requires Supabase. Configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY, then redeploy.</span>
+            </div>
+          )}
+
           {authError && (
             <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-500 text-xs flex items-center gap-2 mb-5">
               <AlertCircle size={16} className="shrink-0" />
@@ -437,43 +503,45 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          <form onSubmit={handleLogin} className="space-y-4">
-            {isSupabaseConfigured && (
+          {isSupabaseConfigured && (
+            <form onSubmit={handleLogin} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
-                  Email
+                  Supabase account email
                 </label>
                 <input
                   type="email"
                   required
+                  autoComplete="username"
                   value={authEmail}
                   onChange={(e) => setAuthEmail(e.target.value)}
-                  placeholder="ahfayyad.m@gmail.com"
+                  placeholder="Admin email"
                   className="w-full px-4 py-3 rounded-xl border border-border bg-muted/40 text-sm focus:border-sky-500 outline-hidden"
                 />
               </div>
-            )}
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
-                Administrator Password
-              </label>
-              <input
-                type="password"
-                required
-                value={authPassword}
-                onChange={(e) => setAuthPassword(e.target.value)}
-                placeholder="Enter admin passcode"
-                className="w-full px-4 py-3 rounded-xl border border-border bg-muted/40 text-sm focus:border-sky-500 outline-hidden"
-              />
-            </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  required
+                  autoComplete="current-password"
+                  value={authPassword}
+                  onChange={(e) => setAuthPassword(e.target.value)}
+                  placeholder="Enter your Supabase password"
+                  className="w-full px-4 py-3 rounded-xl border border-border bg-muted/40 text-sm focus:border-sky-500 outline-hidden"
+                />
+              </div>
 
-            <button
-              type="submit"
-              className="w-full py-3.5 rounded-full font-semibold text-sm bg-linear-to-r from-sky-500 to-indigo-600 text-white shadow-md hover:shadow-lg hover:shadow-sky-500/25 transition-all"
-            >
-              Sign In to Dashboard
-            </button>
-          </form>
+              <button
+                type="submit"
+                className="w-full py-3.5 rounded-full font-semibold text-sm bg-linear-to-r from-sky-500 to-indigo-600 text-white shadow-md hover:shadow-lg hover:shadow-sky-500/25 transition-all"
+              >
+                Sign In to Dashboard
+              </button>
+            </form>
+          )}
 
           <div className="mt-6 pt-5 border-t border-border text-center">
             <Link to="/" className="text-xs text-sky-500 hover:underline">
@@ -499,7 +567,7 @@ export default function AdminDashboard() {
             <h2 className="text-sm font-bold text-foreground">Certifications Manager</h2>
             <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
               <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span>{isSupabaseConfigured ? "Connected to Supabase" : "Persistent Local Mode"}</span>
+              <span>Connected to Supabase</span>
             </div>
           </div>
         </div>
@@ -597,6 +665,12 @@ export default function AdminDashboard() {
             <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 text-xs flex items-center gap-2 mb-6">
               <CheckCircle2 size={16} />
               <span>Certificate saved successfully! Changes are immediately live in the public gallery.</span>
+            </div>
+          )}
+          {saveError && (
+            <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2 mb-6">
+              <AlertCircle size={16} />
+              <span>{saveError}</span>
             </div>
           )}
 
@@ -911,6 +985,12 @@ export default function AdminDashboard() {
                   <tr>
                     <td colSpan={6} className="py-8 text-center text-muted-foreground">
                       Loading certificates...
+                    </td>
+                  </tr>
+                ) : certificatesError ? (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center text-rose-400">
+                      {certificatesError}
                     </td>
                   </tr>
                 ) : filteredCerts.length === 0 ? (

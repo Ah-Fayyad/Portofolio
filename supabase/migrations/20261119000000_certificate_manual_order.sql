@@ -1,3 +1,20 @@
+CREATE TABLE IF NOT EXISTS public.certificates (
+  id text PRIMARY KEY,
+  title text NOT NULL,
+  issuer text NOT NULL,
+  issuer_logo text,
+  issue_date text,
+  expiration_date text,
+  category text DEFAULT 'General',
+  description text,
+  skills jsonb NOT NULL DEFAULT '[]'::jsonb,
+  credential_id text,
+  credential_url text,
+  image_url text,
+  featured boolean NOT NULL DEFAULT false,
+  sort_order integer
+);
+
 ALTER TABLE public.certificates
 ADD COLUMN IF NOT EXISTS sort_order integer;
 

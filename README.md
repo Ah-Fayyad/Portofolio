@@ -30,7 +30,7 @@ The application is structured into **two public pages** and **one private admin 
 - Secure password-protected administrative suite.
 - Real-time CRUD management for certificates without code changes or redeployments.
 - **AI Certificate Scanner**: Upload certificate images or PDFs to auto-extract Title, Issuer, Date, and Skills via AI.
-- Supabase PostgreSQL and Storage bucket synchronization with persistent local fallback.
+- Supabase PostgreSQL and Storage as the single source of truth for certificates and images.
 
 ---
 
@@ -66,13 +66,21 @@ npm run lint
 npm run build
 ```
 
+### 4. Configure Supabase
+
+Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in your local environment and Vercel. Use the public anon/publishable key only; never expose a service-role key.
+
+Apply the SQL migrations in `supabase/migrations` to your Supabase project in filename order. Create the administrator account `ahfayyad.m@gmail.com` through **Authentication → Users**, set its password, and disable public sign-ups. The database policies only grant write access to that account.
+
+The certificates table is publicly readable for the gallery. Mutations require that Supabase Auth account; certificate image reads are public, while uploads are restricted to that account and its own Storage folder. There is no local certificate fallback: Supabase or Storage errors are shown in the UI.
+
 ---
 
 ## 🔐 Admin Dashboard Access
 
 Navigate to `/admin` in your browser.
-- **Default Administrative Passcode**: `Ahmed@2026` (or `admin123`)
-- You can connect your live Supabase project by copying `.env.example` to `.env` and adding your credentials.
+- Sign in with the administrator account created in your Supabase project.
+- Configure local credentials by copying `.env.example` to `.env` and adding your Supabase project values.
 
 ---
 

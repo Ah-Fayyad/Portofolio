@@ -28,6 +28,7 @@ import {
 export default function CertificationsPage() {
   const [certificates, setCertificates] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [sortBy, setSortBy] = useState("custom");
@@ -41,6 +42,7 @@ export default function CertificationsPage() {
         setCertificates(data);
       } catch (err) {
         console.error("Failed to load certificates:", err);
+        setLoadError(err.message || "Could not load certificates from Supabase.");
       } finally {
         setLoading(false);
       }
@@ -253,6 +255,11 @@ export default function CertificationsPage() {
             <div className="text-center py-28 space-y-3">
               <div className="w-9 h-9 border-2 border-sky-500 border-t-transparent rounded-full animate-spin mx-auto" />
               <p className="text-xs text-muted-foreground">Loading credentials gallery...</p>
+            </div>
+          ) : loadError ? (
+            <div className="text-center py-20 border border-rose-500/30 rounded-3xl p-8 max-w-lg mx-auto">
+              <h3 className="text-base font-bold text-rose-400">Could not load certificates</h3>
+              <p className="text-xs text-muted-foreground mt-2">{loadError}</p>
             </div>
           ) : filteredCerts.length === 0 ? (
             <div className="text-center py-24 border border-dashed border-border rounded-3xl p-8 max-w-lg mx-auto space-y-4">

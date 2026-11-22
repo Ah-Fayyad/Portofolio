@@ -1,5 +1,4 @@
-import { openDB } from "idb";
-import { initialCertificates, organizationLogos } from "../data/portfolioData";
+import { organizationLogos } from "../data/portfolioData";
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -8,77 +7,19 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 export const isSupabaseConfigured = Boolean(
   supabaseUrl &&
   supabaseAnonKey &&
-  supabaseUrl !== "https://your-project.supabase.co"
+  supabaseUrl !== "https://your-project.supabase.co" &&
+  supabaseAnonKey !== "your-supabase-anon-key"
 );
 
 export const supabase = isSupabaseConfigured
   ? createClient(supabaseUrl, supabaseAnonKey)
   : null;
 
-// Persistent IndexedDB Store (Can store hundreds of megabytes of high-res images permanently)
-const DB_NAME = "ahmed_portfolio_db";
-const DB_VERSION = 1;
-const STORE_NAME = "certificates";
-
-async function getDB() {
-  return openDB(DB_NAME, DB_VERSION, {
-    upgrade(db) {
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: "id" });
-      }
-    },
-  });
-}
-
-// Compress image to ensure optimal load times & storage durability
-async function compressImageToDataUrl(file, maxWidth = 1600, quality = 0.85) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = reject;
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onerror = reject;
-      img.onload = () => {
-        let width = img.width;
-        let height = img.height;
-
-        if (width > maxWidth) {
-          height = Math.round((height * maxWidth) / width);
-          width = maxWidth;
-        }
-
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL("image/jpeg", quality));
-      };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
-// Initialize and seed default certificates if IndexedDB is empty
-async function getStoredCertificates() {
-  try {
-    const db = await getDB();
-    const all = await db.getAll(STORE_NAME);
-    if (!all || all.length === 0) {
-      // Seed initial
-      const tx = db.transaction(STORE_NAME, "readwrite");
-      for (const cert of initialCertificates) {
-        await tx.store.put(cert);
-      }
-      await tx.done;
-      return initialCertificates;
-    }
-    return all;
-  } catch (err) {
-    console.error("IndexedDB read error, falling back to initial data:", err);
-    return initialCertificates;
+function requireSupabase() {
+  if (!supabase) {
+    throw new Error("Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.");
   }
+  return supabase;
 }
 
 /**
@@ -107,48 +48,39 @@ export function matchOrganizationLogo(orgName) {
  */
 export const CertificateService = {
   async getAll() {
-    if (isSupabaseConfigured) {
-      try {
-        const { data, error } = await supabase
-          .from("certificates")
-          .select("*")
-          .order("issue_date", { ascending: false });
+    const client = requireSupabase();
+    const { data, error } = await client
+      .from("certificates")
+      .select("*")
+      .order("sort_order", { ascending: true })
+      .order("issue_date", { ascending: false });
 
-        if (error) throw error;
-        if (data && data.length > 0) {
-          return data.map((c, index) => ({
-            id: c.id,
-            title: c.title,
-            issuer: c.issuer,
-            issuerLogo: c.issuer_logo || matchOrganizationLogo(c.issuer),
-            issueDate: c.issue_date,
-            expirationDate: c.expiration_date,
-            category: c.category || "General",
-            description: c.description,
-            skills: Array.isArray(c.skills) ? c.skills : JSON.parse(c.skills || "[]"),
-            credentialId: c.credential_id,
-            credentialUrl: c.credential_url,
-            imageUrl: c.image_url,
-            featured: Boolean(c.featured),
-            sortOrder: Number.isFinite(c.sort_order) ? c.sort_order : index
-          })).sort((a, b) => a.sortOrder - b.sortOrder);
-        }
-      } catch (err) {
-        console.warn("Supabase fetch fallback to local store:", err.message);
-      }
-    }
-    const certificates = await getStoredCertificates();
-    return certificates
-      .map((certificate, index) => ({
-        ...certificate,
-        sortOrder: Number.isFinite(certificate.sortOrder)
-          ? certificate.sortOrder
-          : index
-      }))
-      .sort((a, b) => a.sortOrder - b.sortOrder);
+    if (error) throw new Error(`Could not load certificates from Supabase: ${error.message}`);
+
+    return (data || []).map((certificate, index) => ({
+      id: certificate.id,
+      title: certificate.title,
+      issuer: certificate.issuer,
+      issuerLogo: certificate.issuer_logo || matchOrganizationLogo(certificate.issuer),
+      issueDate: certificate.issue_date,
+      expirationDate: certificate.expiration_date,
+      category: certificate.category || "General",
+      description: certificate.description,
+      skills: Array.isArray(certificate.skills)
+        ? certificate.skills
+        : JSON.parse(certificate.skills || "[]"),
+      credentialId: certificate.credential_id,
+      credentialUrl: certificate.credential_url,
+      imageUrl: certificate.image_url,
+      featured: Boolean(certificate.featured),
+      sortOrder: Number.isFinite(certificate.sort_order)
+        ? certificate.sort_order
+        : index
+    }));
   },
 
   async create(cert) {
+    const client = requireSupabase();
     const newCert = {
       ...cert,
       id: cert.id || `cert-${Date.now()}`,
@@ -156,150 +88,115 @@ export const CertificateService = {
       sortOrder: Number.isFinite(cert.sortOrder) ? cert.sortOrder : 0
     };
 
-    if (isSupabaseConfigured) {
-      try {
-        const { data, error } = await supabase
-          .from("certificates")
-          .insert([
-            {
-              id: newCert.id,
-              title: newCert.title,
-              issuer: newCert.issuer,
-              issuer_logo: newCert.issuerLogo,
-              issue_date: newCert.issueDate,
-              expiration_date: newCert.expirationDate || null,
-              category: newCert.category,
-              description: newCert.description,
-              skills: newCert.skills,
-              credential_id: newCert.credentialId,
-              credential_url: newCert.credentialUrl,
-              image_url: newCert.imageUrl,
-              featured: newCert.featured,
-              sort_order: newCert.sortOrder
-            }
-          ])
-          .select()
-          .single();
+    const { data, error } = await client
+      .from("certificates")
+      .insert({
+        id: newCert.id,
+        title: newCert.title,
+        issuer: newCert.issuer,
+        issuer_logo: newCert.issuerLogo,
+        issue_date: newCert.issueDate,
+        expiration_date: newCert.expirationDate || null,
+        category: newCert.category,
+        description: newCert.description,
+        skills: newCert.skills,
+        credential_id: newCert.credentialId,
+        credential_url: newCert.credentialUrl,
+        image_url: newCert.imageUrl,
+        featured: newCert.featured,
+        sort_order: newCert.sortOrder
+      })
+      .select()
+      .single();
 
-        if (error) throw error;
-        return data;
-      } catch (err) {
-        console.warn("Supabase insert error, persisting locally:", err.message);
-      }
-    }
-
-    // Persist permanently in IndexedDB
-    const db = await getDB();
-    await db.put(STORE_NAME, newCert);
-    return newCert;
+    if (error) throw new Error(`Could not save certificate to Supabase: ${error.message}`);
+    return data;
   },
 
   async update(id, updates) {
-    if (isSupabaseConfigured) {
-      try {
-        const { data, error } = await supabase
-          .from("certificates")
-          .update({
-            title: updates.title,
-            issuer: updates.issuer,
-            issuer_logo: updates.issuerLogo || matchOrganizationLogo(updates.issuer),
-            issue_date: updates.issueDate,
-            expiration_date: updates.expirationDate || null,
-            category: updates.category,
-            description: updates.description,
-            skills: updates.skills,
-            credential_id: updates.credentialId,
-            credential_url: updates.credentialUrl,
-            image_url: updates.imageUrl,
-            featured: updates.featured,
-            sort_order: updates.sortOrder
-          })
-          .eq("id", id)
-          .select()
-          .single();
+    const client = requireSupabase();
+    const { data, error } = await client
+      .from("certificates")
+      .update({
+        title: updates.title,
+        issuer: updates.issuer,
+        issuer_logo: updates.issuerLogo || matchOrganizationLogo(updates.issuer),
+        issue_date: updates.issueDate,
+        expiration_date: updates.expirationDate || null,
+        category: updates.category,
+        description: updates.description,
+        skills: updates.skills,
+        credential_id: updates.credentialId,
+        credential_url: updates.credentialUrl,
+        image_url: updates.imageUrl,
+        featured: updates.featured,
+        sort_order: updates.sortOrder
+      })
+      .eq("id", id)
+      .select()
+      .single();
 
-        if (error) throw error;
-        return data;
-      } catch (err) {
-        console.warn("Supabase update error, falling back locally:", err.message);
-      }
-    }
-
-    // Persist permanently in IndexedDB
-    const db = await getDB();
-    const existing = (await db.get(STORE_NAME, id)) || {};
-    const updated = { ...existing, ...updates, id };
-    await db.put(STORE_NAME, updated);
-    return updated;
+    if (error) throw new Error(`Could not update certificate in Supabase: ${error.message}`);
+    return data;
   },
 
   async reorder(ids) {
-    if (isSupabaseConfigured) {
-      const { error } = await supabase.rpc("reorder_certificates", {
-        certificate_ids: ids
-      });
-      if (error) {
-        throw new Error(
-          `Could not save certificate order to Supabase: ${error.message}`
-        );
-      }
-      return;
+    const client = requireSupabase();
+    const { error } = await client.rpc("reorder_certificates", {
+      certificate_ids: ids
+    });
+    if (error) {
+      throw new Error(`Could not save certificate order to Supabase: ${error.message}`);
     }
-
-    const db = await getDB();
-    const tx = db.transaction(STORE_NAME, "readwrite");
-    for (const [sortOrder, id] of ids.entries()) {
-      const certificate = await tx.store.get(id);
-      if (certificate) {
-        await tx.store.put({ ...certificate, sortOrder });
-      }
-    }
-    await tx.done;
   },
 
   async delete(id) {
-    if (isSupabaseConfigured) {
-      try {
-        const { error } = await supabase
-          .from("certificates")
-          .delete()
-          .eq("id", id);
-        if (error) throw error;
-      } catch (err) {
-        console.warn("Supabase delete error, falling back locally:", err.message);
-      }
-    }
-
-    // Delete permanently from IndexedDB
-    const db = await getDB();
-    await db.delete(STORE_NAME, id);
+    const client = requireSupabase();
+    const { error } = await client
+      .from("certificates")
+      .delete()
+      .eq("id", id);
+    if (error) throw new Error(`Could not delete certificate from Supabase: ${error.message}`);
     return true;
   },
 
   async uploadCertificateImage(file) {
-    if (isSupabaseConfigured) {
-      try {
-        const fileExt = file.name.split(".").pop();
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-        const filePath = `certificates/${fileName}`;
+    const client = requireSupabase();
+    const allowedTypes = new Map([
+      ["image/jpeg", "jpg"],
+      ["image/png", "png"],
+      ["image/webp", "webp"]
+    ]);
 
-        const { error: uploadError } = await supabase.storage
-          .from("portfolio_certificates")
-          .upload(filePath, file);
-
-        if (uploadError) throw uploadError;
-
-        const { data } = supabase.storage
-          .from("portfolio_certificates")
-          .getPublicUrl(filePath);
-
-        return data.publicUrl;
-      } catch (err) {
-        console.warn("Supabase storage upload error:", err.message);
-      }
+    if (!allowedTypes.has(file.type)) {
+      throw new Error("Unsupported image type. Upload a JPG, PNG, or WebP image.");
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      throw new Error("Image is larger than 10 MB. Resize it before uploading.");
     }
 
-    // Local permanent mode: Compress & save as high-quality persistent Data URL
-    return await compressImageToDataUrl(file);
+    const { data: { user }, error: userError } = await client.auth.getUser();
+    if (userError || !user) {
+      throw new Error("Sign in with your Supabase admin account before uploading images.");
+    }
+
+    const filePath = `certificates/${user.id}/${crypto.randomUUID()}.${allowedTypes.get(file.type)}`;
+    const { error: uploadError } = await client.storage
+      .from("portfolio_certificates")
+      .upload(filePath, file, {
+        contentType: file.type,
+        cacheControl: "3600",
+        upsert: false
+      });
+
+    if (uploadError) {
+      throw new Error(`Could not upload certificate image to Supabase: ${uploadError.message}`);
+    }
+
+    const { data } = client.storage
+      .from("portfolio_certificates")
+      .getPublicUrl(filePath);
+
+    return data.publicUrl;
   }
 };
