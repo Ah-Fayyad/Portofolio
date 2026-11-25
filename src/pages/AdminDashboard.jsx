@@ -208,16 +208,21 @@ export default function AdminDashboard() {
       reader.readAsDataURL(file);
     });
 
-  // 100% Automatic Intelligent Certificate Scanner with Real-Image OCR
+  // 100% Automatic Intelligent Certificate Scanner (Gemini Vision first, local OCR fallback)
   const handleAICertificateScan = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     setIsScanningAI(true);
     setAiScanError(false);
-    setAiScanFeedback("Analyzing certificate image & reading text content...");
+    setAiScanFeedback("Preparing certificate for AI analysis...");
 
-    if (!["image/jpeg", "image/png", "image/webp", "application/pdf"].includes(file.type)) {
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    const isImage =
+      ["image/jpeg", "image/png", "image/webp"].includes(file.type) ||
+      /\.(jpe?g|png|webp)$/i.test(file.name);
+
+    if (!isPdf && !isImage) {
       setAiScanError(true);
       setAiScanFeedback("Unsupported file type. Please upload a JPG, PNG, WebP, or PDF certificate.");
       setIsScanningAI(false);
@@ -229,31 +234,30 @@ export default function AdminDashboard() {
       let extractedData = null;
       let ocrText = "";
       let renderedPdfImage = null;
+      let aiFallbackReason = "";
 
-      // 1. If it's a PDF, extract digital text AND generate a crisp preview image
-      if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
-        try {
-          const pdfResult = await processPdfCertificate(file, (msg) => setAiScanFeedback(msg));
-          ocrText = pdfResult.text || "";
-          renderedPdfImage = pdfResult.imageUrl || null;
-        } catch (pdfErr) {
-          console.warn("PDF extraction fallback:", pdfErr);
-        }
-      } else if (file.type.startsWith("image/")) {
-        // Real-Time OCR for Image files
-        ocrText = await performClientOCR(file, (msg) => setAiScanFeedback(msg));
+      // 1. If it's a PDF, extract digital text AND render page 1 to a crisp JPEG locally
+      if (isPdf) {
+        const pdfResult = await processPdfCertificate(file, (msg) => setAiScanFeedback(msg));
+        ocrText = pdfResult.text || "";
+        renderedPdfImage = pdfResult.imageUrl || null;
       }
 
-      // 2. Try Serverless AI Gemini pipeline if available
+      // 2. Try Serverless AI Gemini Vision FIRST (fast, accurate; avoids slow Tesseract when AI works)
+      setAiScanFeedback("Analyzing certificate with Gemini AI...");
       try {
-        const base64 = await fileToBase64(file);
+        const aiPayload = renderedPdfImage
+          ? { base64: renderedPdfImage.split(",")[1], mimeType: "image/jpeg" }
+          : { base64: await fileToBase64(file), mimeType: file.type || "image/jpeg" };
+
         const response = await fetch("/api/gemini-certificate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ base64, mimeType: file.type })
+          body: JSON.stringify(aiPayload)
         });
 
-        if (response.ok) {
+        const contentType = response.headers.get("content-type") || "";
+        if (response.ok && contentType.includes("application/json")) {
           const aiResult = await response.json();
           if (aiResult && !aiResult.error && aiResult.title) {
             extractedData = {
@@ -268,14 +272,26 @@ export default function AdminDashboard() {
               credentialUrl: aiResult.credentialUrl || "",
               description: aiResult.description || ""
             };
+          } else if (aiResult?.error) {
+            aiFallbackReason = aiResult.error;
           }
+        } else {
+          aiFallbackReason = "API_UNAVAILABLE";
         }
       } catch (aiErr) {
         console.warn("Serverless AI skipped:", aiErr);
+        aiFallbackReason = "API_UNAVAILABLE";
       }
 
-      // 3. Document Pattern Extractor using real text extracted from PDF or OCR image
+      // 3. Fallback to local OCR + Pattern Extractor only when Gemini AI is unavailable
       if (!extractedData) {
+        if (isImage) {
+          ocrText = await performClientOCR(file, (msg) => setAiScanFeedback(msg));
+        } else if (isPdf && ocrText.trim().length < 20 && renderedPdfImage) {
+          // Scanned/image-only PDF with no embedded text
+          const pdfImgFile = await dataUrlToFile(renderedPdfImage, "pdf-page-1.jpg");
+          ocrText = await performClientOCR(pdfImgFile, (msg) => setAiScanFeedback(msg));
+        }
         extractedData = extractCertificateMetadataFromFilenameAndText(file.name, ocrText);
       }
 
@@ -300,7 +316,7 @@ export default function AdminDashboard() {
       if (renderedPdfImage) {
         const previewFile = await dataUrlToFile(renderedPdfImage, "certificate-preview.jpg");
         finalImageUrl = await CertificateService.uploadCertificateImage(previewFile);
-      } else if (file.type.startsWith("image/")) {
+      } else if (isImage) {
         finalImageUrl = await CertificateService.uploadCertificateImage(file);
       }
 
@@ -311,7 +327,19 @@ export default function AdminDashboard() {
         issuerLogo: matchOrganizationLogo(extractedData.issuer)
       }));
 
-      setAiScanFeedback("✨ Certificate text & image scanned successfully! Review details and click Publish.");
+      if (aiFallbackReason) {
+        const reasonHint =
+          aiFallbackReason === "NO_API_KEY"
+            ? "GEMINI_API_KEY is not configured on the server"
+            : aiFallbackReason === "API_UNAVAILABLE"
+              ? "Serverless /api/gemini-certificate is not running locally (use `vercel dev` or deploy to Vercel)"
+              : "Gemini API fallback triggered";
+        setAiScanFeedback(
+          `⚠️ Scanned using local OCR fallback (${reasonHint}). Review details and click Publish.`
+        );
+      } else {
+        setAiScanFeedback("✨ Certificate scanned with Gemini AI! Review details and click Publish.");
+      }
     } catch (err) {
       console.error("Auto scan failed:", err);
       setAiScanError(true);

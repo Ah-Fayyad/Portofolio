@@ -1,18 +1,14 @@
-// Vercel Serverless Function: /api/gemini-certificate
-// Automatically cycles through valid models (v1 and v1beta) with zero configuration
+/* global process */
+// Vercel Edge Function: /api/gemini-certificate
+// Uses current Gemini multimodal models via v1beta REST API
 
 export const config = {
   runtime: "edge",
 };
 
-const CANDIDATE_ENDPOINTS = [
-  // 1. Stable v1 endpoint (Standard across all modern Google AI Studio keys)
-  { url: "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent" },
-  { url: "https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent" },
-  { url: "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent" },
-  // 2. Beta endpoints
-  { url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent" },
-  { url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent" },
+const CANDIDATE_MODELS = [
+  "gemini-3.8-flash",
+  "gemini-3.5-flash-lite",
 ];
 
 export default async function handler(req) {
@@ -42,25 +38,25 @@ export default async function handler(req) {
       );
     }
 
-    const prompt = `Analyze this certificate/diploma image and extract:
-Return ONLY valid JSON:
+    const prompt = `You are an expert certificate & credential analyzer. Carefully inspect this certificate/diploma image or document and extract accurate metadata.
+Return ONLY valid JSON with these exact keys:
 {
-  "title": "Exact Title of Certificate/Diploma",
-  "issuer": "Issuing Organization/Platform (e.g. Almdrasa, Coursera, Meta, Google, AWS)",
-  "issueDate": "Year or Month Year",
-  "category": "Frontend Development, Full-Stack & Backend, Computer Science, Cloud & DevOps, or General",
-  "skills": ["Skill1", "Skill2"],
-  "credentialId": "ID if present or empty string",
-  "credentialUrl": "Verification URL if present or empty string",
-  "description": "2 sentences summary of topics covered"
+  "title": "Exact full title of the certificate, course, or diploma (without the recipient's name)",
+  "issuer": "Issuing organization, university, or platform (e.g. Almdrasa, Coursera, Meta, Google, AWS, ITI, Udemy)",
+  "issueDate": "Issue date as 'Month YYYY' or 'YYYY' (e.g. 'March 2025' or '2025')",
+  "category": "Pick the best match from: 'Software & Web Development', 'Tech & Computer Science', 'Soft Skills & Leadership', 'English & Languages', 'Workshops & Hackathons', 'Frontend Development' (or a concise custom category if none fit)",
+  "skills": ["Skill 1", "Skill 2", "Skill 3"],
+  "credentialId": "Certificate/Credential ID if visible, otherwise empty string",
+  "credentialUrl": "Verification URL if visible, otherwise empty string",
+  "description": "2 concise, professional sentences summarizing what this credential certifies and the core topics covered."
 }`;
 
     let lastError = null;
 
-    // Try candidate endpoints automatically
-    for (const endpoint of CANDIDATE_ENDPOINTS) {
+    for (const model of CANDIDATE_MODELS) {
       try {
-        const res = await fetch(`${endpoint.url}?key=${apiKey}`, {
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        const res = await fetch(endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -81,14 +77,16 @@ Return ONLY valid JSON:
         });
 
         if (!res.ok) {
-          lastError = await res.text();
+          lastError = `${model} (${res.status}): ${await res.text()}`;
           continue;
         }
 
         const data = await res.json();
         const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
         if (rawText) {
-          const parsed = JSON.parse(rawText.replace(/```json/g, "").replace(/```/g, "").trim());
+          const parsed = JSON.parse(
+            rawText.replace(/```json/g, "").replace(/```/g, "").trim()
+          );
           return new Response(JSON.stringify(parsed), {
             status: 200,
             headers: { "Content-Type": "application/json" },
