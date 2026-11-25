@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { CertificateService, matchOrganizationLogo } from "../lib/supabaseClient";
-import { organizationLogos } from "../data/portfolioData";
+import { CertificateService, resolveOrganizationDomain } from "../lib/supabaseClient";
 import Navbar from "../components/common/Navbar";
 import Footer from "../components/common/Footer";
 import { Reveal, StaggerGroup, StaggerItem } from "../components/common/Reveal";
@@ -24,6 +23,35 @@ import {
   Layers,
   GraduationCap
 } from "lucide-react";
+
+function OrgLogo({ cert }) {
+  const [imgFailed, setImgFailed] = useState(false);
+  const domain = resolveOrganizationDomain(cert.issuer, cert.issuerLogo);
+
+  if (domain && !imgFailed) {
+    const logoUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`;
+    return (
+      <div
+        className="w-9 h-9 rounded-xl bg-white/95 p-1.5 flex items-center justify-center shrink-0 border border-border/60 shadow-xs overflow-hidden"
+        title={cert.issuer}
+      >
+        <img
+          src={logoUrl}
+          alt={`${cert.issuer} logo`}
+          className="w-full h-full object-contain"
+          loading="lazy"
+          onError={() => setImgFailed(true)}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-9 h-9 rounded-xl bg-sky-500/10 text-sky-500 flex items-center justify-center shrink-0 font-bold text-xs border border-sky-500/20">
+      <Building2 size={18} />
+    </div>
+  );
+}
 
 export default function CertificationsPage() {
   const [certificates, setCertificates] = useState([]);
@@ -106,25 +134,7 @@ export default function CertificationsPage() {
     });
 
   // Render Org Logo Helper
-  const renderOrgLogo = (cert) => {
-    const key = cert.issuerLogo || matchOrganizationLogo(cert.issuer);
-    const org = key ? organizationLogos[key] : null;
-
-    if (org && org.svg) {
-      return (
-        <div
-          className="w-9 h-9 rounded-xl bg-white/10 p-1.5 flex items-center justify-center shrink-0 border border-white/5"
-          dangerouslySetInnerHTML={{ __html: org.svg }}
-          title={org.name}
-        />
-      );
-    }
-    return (
-      <div className="w-9 h-9 rounded-xl bg-sky-500/10 text-sky-500 flex items-center justify-center shrink-0 font-bold text-xs border border-sky-500/20">
-        <Building2 size={18} />
-      </div>
-    );
-  };
+  const renderOrgLogo = (cert) => <OrgLogo cert={cert} />;
 
   // Helper count badges
   const getCategoryCount = (cat) => {

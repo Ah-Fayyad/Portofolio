@@ -263,6 +263,7 @@ export default function AdminDashboard() {
             extractedData = {
               title: aiResult.title || "",
               issuer: aiResult.issuer || "",
+              issuerLogo: aiResult.issuerDomain || "",
               issueDate: aiResult.issueDate || "",
               category: aiResult.category || "Software & Web Development",
               skillsString: Array.isArray(aiResult.skills)
@@ -324,7 +325,7 @@ export default function AdminDashboard() {
         ...prev,
         ...extractedData,
         imageUrl: finalImageUrl || prev.imageUrl,
-        issuerLogo: matchOrganizationLogo(extractedData.issuer)
+        issuerLogo: extractedData.issuerLogo || matchOrganizationLogo(extractedData.issuer)
       }));
 
       if (aiFallbackReason) {

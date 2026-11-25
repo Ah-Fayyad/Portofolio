@@ -43,6 +43,7 @@ Return ONLY valid JSON with these exact keys:
 {
   "title": "Exact full title of the certificate, course, or diploma (without the recipient's name)",
   "issuer": "Issuing organization, university, or platform (e.g. Almdrasa, Coursera, Meta, Google, AWS, ITI, Udemy)",
+  "issuerDomain": "Official website domain of the issuing organization for fetching its real logo (e.g. 'almdrasa.com', 'coursera.org', 'meta.com', 'google.com', 'aws.amazon.com', 'iti.gov.eg', 'udemy.com')",
   "issueDate": "Issue date as 'Month YYYY' or 'YYYY' (e.g. 'March 2025' or '2025')",
   "category": "Pick the best match from: 'Software & Web Development', 'Tech & Computer Science', 'Soft Skills & Leadership', 'English & Languages', 'Workshops & Hackathons', 'Frontend Development' (or a concise custom category if none fit)",
   "skills": ["Skill 1", "Skill 2", "Skill 3"],

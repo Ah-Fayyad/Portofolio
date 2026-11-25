@@ -22,6 +22,56 @@ function requireSupabase() {
   return supabase;
 }
 
+export const ORGANIZATION_DOMAINS = {
+  edraak: "edraak.org",
+  almdrasa: "almdrasa.com",
+  google: "google.com",
+  meta: "meta.com",
+  microsoft: "microsoft.com",
+  ibm: "ibm.com",
+  aws: "aws.amazon.com",
+  coursera: "coursera.org",
+  udemy: "udemy.com",
+  udacity: "udacity.com",
+  iti: "iti.gov.eg",
+  maharatech: "maharatech.gov.eg",
+  aou: "aou.edu.eg",
+  freecodecamp: "freecodecamp.org",
+  linkedin: "linkedin.com",
+  hackerrank: "hackerrank.com",
+  datacamp: "datacamp.com",
+  cisco: "cisco.com",
+  oracle: "oracle.com",
+  github: "github.com",
+  hubspot: "hubspot.com",
+  harvard: "harvard.edu",
+  stanford: "stanford.edu",
+  mit: "mit.edu",
+  route: "routeacademy.com"
+};
+
+/**
+ * Resolve an issuing organization name or stored logo key/domain to a real company domain
+ */
+export function resolveOrganizationDomain(orgName, issuerLogoOrDomain) {
+  if (issuerLogoOrDomain && issuerLogoOrDomain.includes(".")) {
+    return issuerLogoOrDomain.replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0].trim();
+  }
+  if (issuerLogoOrDomain && ORGANIZATION_DOMAINS[issuerLogoOrDomain]) {
+    return ORGANIZATION_DOMAINS[issuerLogoOrDomain];
+  }
+  const key = matchOrganizationLogo(orgName);
+  if (key && ORGANIZATION_DOMAINS[key]) {
+    return ORGANIZATION_DOMAINS[key];
+  }
+  if (!orgName) return null;
+  const clean = orgName.toLowerCase().trim();
+  for (const [k, domain] of Object.entries(ORGANIZATION_DOMAINS)) {
+    if (clean.includes(k)) return domain;
+  }
+  return null;
+}
+
 /**
  * Match an issuing organization string to a known logo key
  */
