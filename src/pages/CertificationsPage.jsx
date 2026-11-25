@@ -284,8 +284,10 @@ export default function CertificationsPage() {
             </div>
           ) : (
             <StaggerGroup
+              key={`${selectedCategory}-${sortBy}-${searchTerm}`}
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 items-stretch"
               stagger={0.08}
+              amount="some"
             >
               {filteredCerts.map((cert) => (
                 <StaggerItem key={cert.id} className="h-full">

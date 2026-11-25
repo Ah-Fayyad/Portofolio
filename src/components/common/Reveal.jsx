@@ -6,7 +6,7 @@ export function Reveal({
   className = "",
   delay = 0,
   y = 24,
-  amount = 0.2
+  amount = "some"
 }) {
   const shouldReduceMotion = useReducedMotion();
 
@@ -32,7 +32,7 @@ export function StaggerGroup({
   className = "",
   stagger = 0.1,
   delayChildren = 0.05,
-  amount = 0.15
+  amount = "some"
 }) {
   const shouldReduceMotion = useReducedMotion();
 
